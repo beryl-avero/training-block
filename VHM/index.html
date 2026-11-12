@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VHM SUB 2 — Running Training Tracker</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- SheetJS (xlsx parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen text-slate-100 antialiased selection:bg-indigo-500 selection:text-white pb-24 md:pb-16">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 glass-panel border-b border-slate-800/80 px-3 sm:px-8 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2.5 sm:gap-3">
+      <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-rose-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <i data-lucide="activity" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1">
+            VHM <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-rose-400">SUB 2</span>
+          </h1>
+          <span class="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 uppercase tracking-wider">
+            21.1K &lt; 2H
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">Easy • Interval • Tempo • Long Run Tracker</p>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="flex items-center gap-2">
+      <button onclick="window.app.openAddSessionModal()" class="px-3 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-xs font-bold text-white flex items-center gap-1.5 shadow-lg shadow-indigo-600/30">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        <span>Catat Lari</span>
+      </button>
+
+      <button onclick="window.app.addNewWeek()" class="hidden md:flex px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 items-center gap-1.5 transition-all">
+        <i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i>
+        <span>+ Minggu</span>
+      </button>
+
+      <!-- Dropdown / Data Menu -->
+      <div class="relative group">
+        <button class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center">
+          <i data-lucide="more-vertical" class="w-4 h-4"></i>
+        </button>
+        <div class="absolute right-0 mt-2 w-52 py-2 glass-panel rounded-2xl shadow-2xl border border-slate-700 hidden group-hover:block transition-all z-50">
+          <button onclick="window.app.openEventModal()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
+            <i data-lucide="flag" class="w-3.5 h-3.5 text-rose-400"></i>
+            Atur Event Race & Countdown
+          </button>
+          <button onclick="window.app.exportToCSV()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>
+            Unduh CSV (Excel)
+          </button>
+          <label class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer">
+            <i data-lucide="file-up" class="w-3.5 h-3.5 text-emerald-400"></i>
+            Impor File Excel (.xlsx)
+            <input type="file" id="import-excel-file" accept=".xlsx, .xls" class="hidden" onchange="window.app.importExcel(event)">
+          </label>
+          <button onclick="window.app.exportJSON()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-indigo-400"></i>
+            Backup JSON
+          </button>
+          <label class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer">
+            <i data-lucide="upload" class="w-3.5 h-3.5 text-amber-400"></i>
+            Pulihkan Cadangan (JSON)
+            <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="window.app.importJSON(event)">
+          </label>
+          <button onclick="window.print()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
+            <i data-lucide="printer" class="w-3.5 h-3.5 text-blue-400"></i>
+            Cetak / Simpan PDF
+          </button>
+          <hr class="border-slate-700 my-1">
+          <button onclick="window.app.resetToExcelDefaults()" class="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            Reset ke Data Excel Asli
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-6">
+
+    <!-- 1. EVENT RACE DAY & LIVE COUNTDOWN HERO CARD -->
+    <section class="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-indigo-500/30 shadow-2xl relative overflow-hidden bg-gradient-to-r from-slate-900/95 via-indigo-950/40 to-slate-900/95">
+      <!-- Ambient Glows -->
+      <div class="absolute -right-16 -top-16 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-56 h-56 bg-rose-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 uppercase tracking-wider">
+              <i data-lucide="flame" class="w-3 h-3"></i>
+              Target Event Lomba
+            </span>
+            <button onclick="window.app.openEventModal()" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 transition-colors">
+              <i data-lucide="edit-3" class="w-3 h-3"></i> Atur Event
+            </button>
+          </div>
+          <h2 id="countdown-event-name" class="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight">
+            VHM — Half Marathon Sub 2
+          </h2>
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-slate-300">
+            <span class="flex items-center gap-1 text-indigo-300 font-medium">
+              <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+              <span id="countdown-event-date">Minggu, 13 Desember 2026</span>
+            </span>
+            <span class="text-slate-600 hidden sm:inline">•</span>
+            <span class="flex items-center gap-1 text-amber-400 font-mono-numbers font-semibold">
+              <i data-lucide="target" class="w-3.5 h-3.5"></i>
+              Target: <span id="countdown-event-target">&lt; 02:00:00 (5'41"/km)</span>
+            </span>
+            <span class="text-slate-600 hidden sm:inline">•</span>
+            <span id="countdown-event-location" class="flex items-center gap-1 text-slate-400">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+              Road Race Course
+            </span>
+          </div>
+        </div>
+
+        <!-- Countdown Timer Digits (Responsive for Mobile) -->
+        <div class="w-full md:w-auto flex items-center justify-center gap-1.5 sm:gap-2.5 bg-slate-950/70 p-2.5 sm:p-3.5 rounded-2xl border border-slate-800 shadow-inner">
+          <div class="countdown-digit-box p-2 sm:p-3 rounded-xl text-center min-w-[58px] sm:min-w-[76px]">
+            <div id="countdown-days" class="text-xl sm:text-3xl font-black font-mono-numbers text-indigo-400">00</div>
+            <div class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">Hari</div>
+          </div>
+          <div class="text-lg sm:text-2xl font-black text-slate-600 font-mono-numbers">:</div>
+          <div class="countdown-digit-box p-2 sm:p-3 rounded-xl text-center min-w-[58px] sm:min-w-[76px]">
+            <div id="countdown-hours" class="text-xl sm:text-3xl font-black font-mono-numbers text-white">00</div>
+            <div class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">Jam</div>
+          </div>
+          <div class="text-lg sm:text-2xl font-black text-slate-600 font-mono-numbers">:</div>
+          <div class="countdown-digit-box p-2 sm:p-3 rounded-xl text-center min-w-[58px] sm:min-w-[76px]">
+            <div id="countdown-minutes" class="text-xl sm:text-3xl font-black font-mono-numbers text-white">00</div>
+            <div class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">Menit</div>
+          </div>
+          <div class="text-lg sm:text-2xl font-black text-slate-600 font-mono-numbers">:</div>
+          <div class="countdown-digit-box p-2 sm:p-3 rounded-xl text-center min-w-[58px] sm:min-w-[76px]">
+            <div id="countdown-seconds" class="text-xl sm:text-3xl font-black font-mono-numbers text-rose-400">00</div>
+            <div class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">Detik</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. REKAPAN DALAM BENTUK KALENDER (INTERACTIVE TRAINING CALENDAR) -->
+    <section id="section-calendar" class="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-700/60 shadow-xl">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i data-lucide="calendar" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              Rekapan Kalender Latihan
+            </h3>
+            <p class="text-xs text-slate-400">Jadwal lari, pencapaian jarak harian, dan countdown race</p>
+          </div>
+        </div>
+
+        <!-- Month Navigation -->
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <button onclick="window.app.prevMonth()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <span id="calendar-month-title" class="text-sm font-bold text-white px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 min-w-[130px] text-center">
+            November 2026
+          </span>
+          <button onclick="window.app.nextMonth()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+          <button onclick="window.app.currentMonthJump()" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition-all">
+            Bulan Ini
+          </button>
+        </div>
+      </div>
+
+      <!-- Monthly Summary Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Jarak Bulan Ini</div>
+            <div id="cal-month-km" class="text-sm sm:text-base font-bold font-mono-numbers text-white">0.0 km</div>
+          </div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Total Sesi Lari</div>
+            <div id="cal-month-runs" class="text-sm sm:text-base font-bold font-mono-numbers text-white">0 Sesi</div>
+          </div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Rerata Pace Bulan</div>
+            <div id="cal-month-pace" class="text-sm sm:text-base font-bold font-mono-numbers text-white">-</div>
+          </div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+          <div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Long Run Terjauh</div>
+            <div id="cal-month-long" class="text-sm sm:text-base font-bold font-mono-numbers text-white">0.0 km</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Day-of-Week Headers -->
+      <div class="calendar-grid mb-1 text-center font-bold text-[11px] text-slate-400 uppercase tracking-wider">
+        <div class="py-1">Sen</div>
+        <div class="py-1">Sel</div>
+        <div class="py-1">Rab</div>
+        <div class="py-1">Kam</div>
+        <div class="py-1">Jum</div>
+        <div class="py-1">Sab</div>
+        <div class="py-1 text-rose-400">Min</div>
+      </div>
+
+      <!-- Calendar Cells Grid -->
+      <div class="calendar-grid" id="calendar-days-container">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- Legend -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Easy Run</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Tempo Run</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Interval Run</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span> Long Run</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span> 🏁 Race Day</span>
+        </div>
+        <div class="text-slate-500 italic text-[10px]">
+          * Ketuk tanggal untuk melihat rincian atau menambah sesi lari
+        </div>
+      </div>
+    </section>
+
+    <!-- KEY STATS ROW -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div class="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-700/60 flex items-center gap-3 sm:gap-4">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+          <i data-lucide="route" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+        </div>
+        <div>
+          <div class="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Jarak</div>
+          <div id="stat-total-km" class="text-lg sm:text-2xl font-black font-mono-numbers text-white">0 km</div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-700/60 flex items-center gap-3 sm:gap-4">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+          <i data-lucide="flame" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+        </div>
+        <div>
+          <div class="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Sesi</div>
+          <div id="stat-total-runs" class="text-lg sm:text-2xl font-black font-mono-numbers text-white">0 Sesi</div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-700/60 flex items-center gap-3 sm:gap-4">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+          <i data-lucide="timer" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+        </div>
+        <div>
+          <div class="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Rerata Pace</div>
+          <div id="stat-avg-pace" class="text-lg sm:text-2xl font-black font-mono-numbers text-white">-</div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-700/60 flex items-center gap-3 sm:gap-4">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+          <i data-lucide="heart" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+        </div>
+        <div>
+          <div class="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Rerata HR</div>
+          <div id="stat-avg-hr" class="text-lg sm:text-2xl font-black font-mono-numbers text-white">-</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALYTICS CHARTS SECTION -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- Mileage Chart -->
+      <div class="lg:col-span-6 glass-panel rounded-2xl p-4 sm:p-5 border border-slate-700/60 shadow-xl flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-400"></i>
+              Distribusi Volume Mingguan (km)
+            </h3>
+            <p class="text-xs text-slate-400">Proporsi jarak per minggu berdasarkan jenis lari</p>
+          </div>
+        </div>
+        <div class="relative h-56 sm:h-64 w-full">
+          <canvas id="chart-mileage"></canvas>
+        </div>
+      </div>
+
+      <!-- Pace Evolution Chart -->
+      <div class="lg:col-span-6 glass-panel rounded-2xl p-4 sm:p-5 border border-slate-700/60 shadow-xl flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+              Tren Pace vs Target Sub-2 (5:41)
+            </h3>
+            <p class="text-xs text-slate-400">Perkembangan kecepatan lari menuju garis batas 5:41 /km</p>
+          </div>
+        </div>
+        <div class="relative h-56 sm:h-64 w-full">
+          <canvas id="chart-pace"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKOUT LOGS TOOLBAR & VIEWS -->
+    <section class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Filter Chips -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button data-filter="all" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all bg-indigo-600 text-white flex items-center gap-1.5">
+            <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+            Semua Sesi
+          </button>
+          <button data-filter="easy_run" class="filter-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Easy
+          </button>
+          <button data-filter="tempo_run" class="filter-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            Tempo
+          </button>
+          <button data-filter="interval_run" class="filter-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+            Interval
+          </button>
+          <button data-filter="long_run" class="filter-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            Long Run
+          </button>
+        </div>
+
+        <!-- View Switcher -->
+        <div class="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800">
+          <button data-view="cards" class="view-toggle-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-white flex items-center gap-1.5 transition-all">
+            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+            Tampilan Kartu
+          </button>
+          <button data-view="excel" class="view-toggle-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition-all">
+            <i data-lucide="table" class="w-3.5 h-3.5"></i>
+            Template Excel Asli
+          </button>
+        </div>
+      </div>
+
+      <!-- CONTAINER 1: CARDS VIEW -->
+      <div id="card-view-container">
+        <!-- Injected by app.js -->
+      </div>
+
+      <!-- CONTAINER 2: EXCEL TABLE VIEW -->
+      <div id="excel-view-container" class="hidden">
+        <!-- Injected by app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
+  <nav class="mobile-bottom-nav md:hidden px-4 py-2 flex items-center justify-around shadow-2xl">
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-400 text-[10px] font-medium">
+      <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+      <span>Beranda</span>
+    </button>
+    <button onclick="document.getElementById('section-calendar').scrollIntoView({behavior: 'smooth'})" class="flex flex-col items-center gap-1 text-indigo-400 text-[10px] font-medium">
+      <i data-lucide="calendar" class="w-5 h-5"></i>
+      <span>Kalender</span>
+    </button>
+    <button onclick="window.app.openAddSessionModal()" class="flex flex-col items-center gap-0.5 -mt-5">
+      <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-rose-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/40 border-2 border-slate-900">
+        <i data-lucide="plus" class="w-6 h-6"></i>
+      </div>
+      <span class="text-[10px] font-bold text-white">Catat</span>
+    </button>
+    <button onclick="document.getElementById('card-view-container').scrollIntoView({behavior: 'smooth'})" class="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-400 text-[10px] font-medium">
+      <i data-lucide="list" class="w-5 h-5"></i>
+      <span>Sesi Lari</span>
+    </button>
+    <button onclick="window.app.openEventModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-indigo-400 text-[10px] font-medium">
+      <i data-lucide="flag" class="w-5 h-5"></i>
+      <span>Event</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: CATAT / EDIT SESI LARI -->
+  <div id="modal-session" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden overflow-y-auto">
+    <div class="glass-panel w-full max-w-2xl rounded-2xl p-5 sm:p-6 border border-slate-700 shadow-2xl my-auto relative max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700/80">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+          </div>
+          <h3 id="modal-session-title" class="text-base font-bold text-white">Catat Sesi Lari Baru</h3>
+        </div>
+        <button onclick="window.app.closeModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-session" onsubmit="window.app.handleSaveSession(event); return false;" class="space-y-4">
+        <!-- Week and Type selection -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Pilih Minggu Latihan</label>
+            <select id="field-week-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+              <!-- Rendered by JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Jenis Lari</label>
+            <select id="field-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+              <option value="easy_run">Easy Run (Pondasi Aerobik Z2)</option>
+              <option value="tempo_run">Tempo Run (Threshold Laktat Z4)</option>
+              <option value="interval_run">Interval Run (Speedwork 400m-1k Z5)</option>
+              <option value="long_run">Long Run (Ketahanan Jauh Menuju 21K)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Date & Location -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Tanggal Sesi</label>
+            <input type="date" id="field-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Lokasi / Tipe</label>
+            <select id="field-location" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+              <option value="Outdoor">Outdoor (Jalan / Lintasan)</option>
+              <option value="Indoor">Indoor (Treadmill Gym)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Metrics Row: Distance, Time, Pace, HR -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div>
+            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Jarak (km)</label>
+            <input type="number" step="0.01" id="field-distance" required placeholder="misal: 6.24" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Waktu</label>
+            <input type="text" id="field-time" required placeholder="45:00" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Rerata Pace</label>
+            <input type="text" id="field-pace" placeholder="7'13&quot;" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-emerald-400 font-bold focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Heart Rate</label>
+            <input type="number" id="field-hr" placeholder="156" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-rose-400 font-bold focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- DYNAMIC SECTION: INTERVAL DETAILS -->
+        <div id="section-interval-details" class="hidden p-3.5 rounded-xl bg-slate-900/80 border border-rose-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+              <i data-lucide="timer" class="w-4 h-4"></i>
+              Pengaturan Repetisi Interval
+            </span>
+            <button type="button" id="btn-add-interval-set" class="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold border border-rose-500/40 flex items-center gap-1">
+              <i data-lucide="plus" class="w-3 h-3"></i> Tambah Set
+            </button>
+          </div>
+
+          <!-- Warmup & Cooldown inputs -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="p-2 rounded bg-slate-800/80 border border-slate-700">
+              <div class="font-semibold text-slate-300 mb-1 text-[11px]">Warm Up</div>
+              <div class="grid grid-cols-3 gap-1">
+                <input type="number" step="0.1" id="field-interval-wu-dist" placeholder="Jarak" value="1.5" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+                <input type="text" id="field-interval-wu-pace" placeholder="Pace" value="8'17&quot;" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+                <input type="number" id="field-interval-wu-hr" placeholder="HR" value="151" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+              </div>
+            </div>
+            <div class="p-2 rounded bg-slate-800/80 border border-slate-700">
+              <div class="font-semibold text-slate-300 mb-1 text-[11px]">Cool Down</div>
+              <div class="grid grid-cols-3 gap-1">
+                <input type="number" step="0.1" id="field-interval-cd-dist" placeholder="Jarak" value="1.64" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+                <input type="text" id="field-interval-cd-pace" placeholder="Pace" value="9'08&quot;" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+                <input type="number" id="field-interval-cd-hr" placeholder="HR" value="165" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sets Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="text-[10px] text-slate-400 uppercase border-b border-slate-800">
+                  <th class="py-1 px-1.5">Set</th>
+                  <th class="py-1 px-1.5">Target</th>
+                  <th class="py-1 px-1.5">Pace</th>
+                  <th class="py-1 px-1.5">HR</th>
+                  <th class="py-1 px-1.5 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="interval-sets-table-body">
+                <!-- Injected by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DYNAMIC SECTION: TEMPO DETAILS -->
+        <div id="section-tempo-details" class="hidden p-3.5 rounded-xl bg-slate-900/80 border border-amber-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-4 h-4"></i>
+              Struktur Segmen Tempo Run
+            </span>
+            <button type="button" id="btn-add-tempo-segment" class="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold border border-amber-500/40 flex items-center gap-1">
+              <i data-lucide="plus" class="w-3 h-3"></i> Tambah Segmen
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="text-[10px] text-slate-400 uppercase border-b border-slate-800">
+                  <th class="py-1 px-1.5">Nama</th>
+                  <th class="py-1 px-1.5">Jarak (km)</th>
+                  <th class="py-1 px-1.5">Waktu</th>
+                  <th class="py-1 px-1.5">Pace</th>
+                  <th class="py-1 px-1.5">HR</th>
+                  <th class="py-1 px-1.5 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tempo-segments-table-body">
+                <!-- Injected by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Catatan / Evaluasi Sesi</label>
+          <textarea id="field-notes" rows="2" placeholder="Sensasi lari, cuaca, hidrasi, rute..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="flex items-center justify-between pt-3 border-t border-slate-700/80">
+          <button type="button" id="btn-modal-delete" onclick="window.app.deleteCurrentEditingSession()" class="hidden px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-white hover:bg-rose-600/30 border border-rose-500/30 transition-all flex items-center gap-1.5">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            Hapus Sesi
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="window.app.closeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+              Batal
+            </button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-1.5">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              Simpan Sesi
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ATUR EVENT LARI & COUNTDOWN -->
+  <div id="modal-event" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden overflow-y-auto">
+    <div class="glass-panel w-full max-w-lg rounded-2xl p-5 sm:p-6 border border-slate-700 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="flag" class="w-4 h-4 text-rose-400"></i>
+          Atur Target Event Lari & Countdown
+        </h3>
+        <button onclick="window.app.closeEventModal()" class="p-1 rounded-lg text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="form-event" onsubmit="window.app.handleSaveEvent(event); return false;" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Event / Lomba</label>
+          <input type="text" id="event-input-name" required placeholder="VHM — Half Marathon Sub 2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Tanggal & Waktu Lomba</label>
+            <input type="datetime-local" id="event-input-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Jarak Target (km)</label>
+            <input type="number" step="0.001" id="event-input-distance" required value="21.0975" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Target Waktu Finish</label>
+            <input type="text" id="event-input-time" required value="01:59:59" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono-numbers text-amber-400 font-bold focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Target Pace Rata-rata</label>
+            <input type="text" id="event-input-pace" required value="5'41&quot;" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono-numbers text-emerald-400 font-bold focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Lokasi Race</label>
+            <input type="text" id="event-input-location" placeholder="Road Race Course" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Nomor BIB (Opsional)</label>
+            <input type="text" id="event-input-bib" placeholder="SUB-200" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Catatan / Strategi Race</label>
+          <textarea id="event-input-notes" rows="2" placeholder="Pacing 5'41&quot;/km stabil, asupan gel tiap 45 menit..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-700">
+          <button type="button" onclick="window.app.closeEventModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            Batal
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg shadow-indigo-600/30">
+            Simpan Event
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-16 md:bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all transform duration-300 translate-y-20 opacity-0 bg-emerald-600 text-white">
+    Data tersimpan
+  </div>
+
+  <!-- Application Data & Logic Scripts -->
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+/* Custom Styles for VHM SUB 2 Running Tracker - Mobile & Desktop Optimized */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #080d1a;
+  color: #f1f5f9;
+  overflow-x: hidden;
+}
+
+.font-mono-numbers {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Glassmorphism effects */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b1120;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Badges for Run Types */
+.badge-easy {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-tempo {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-interval {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.badge-long {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Countdown Ticker Box */
+.countdown-digit-box {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Calendar Styling - Mobile First */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+@media (min-width: 640px) {
+  .calendar-grid {
+    gap: 8px;
+  }
+}
+
+.calendar-day-cell {
+  min-height: 72px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  border-radius: 0.65rem;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .calendar-day-cell {
+    min-height: 96px;
+    padding: 0.5rem;
+    border-radius: 0.85rem;
+  }
+}
+
+.calendar-day-cell:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
+
+.calendar-day-today {
+  border: 2px solid #6366f1 !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+}
+
+.calendar-day-other-month {
+  opacity: 0.25;
+}
+
+.calendar-day-race {
+  border: 2px solid #f43f5e !important;
+  background: rgba(244, 63, 94, 0.15) !important;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.35);
+}
+
+/* Excel Spreadsheet Simulation */
+.excel-table-container {
+  overflow-x: auto;
+  border: 1px solid #334155;
+  border-radius: 0.75rem;
+  background: #0f172a;
+}
+
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.excel-table th, 
+.excel-table td {
+  border: 1px solid #1e293b;
+  padding: 0.4rem 0.6rem;
+  white-space: nowrap;
+}
+
+.excel-header-col {
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 600;
+  text-align: center;
+}
+
+.excel-row-num {
+  background: #1e293b;
+  color: #64748b;
+  text-align: center;
+  font-weight: 600;
+  user-select: none;
+  width: 34px;
+}
+
+.excel-cell-easy { background: rgba(16, 185, 129, 0.08); }
+.excel-cell-tempo { background: rgba(245, 158, 11, 0.08); }
+.excel-cell-interval { background: rgba(244, 63, 94, 0.08); }
+.excel-cell-long { background: rgba(59, 130, 246, 0.08); }
+
+/* Modal Backdrop */
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Print Optimization */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  header, .filter-btn, .view-toggle-btn, button, #toast, .modal-backdrop, .mobile-bottom-nav {
+    display: none !important;
+  }
+  .glass-panel, .glass-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+  }
+  .text-white { color: #000000 !important; }
+}
