@@ -22,6 +22,8 @@ class RunningTrackerApp {
 
     this.currentView = 'cards'; // 'cards' or 'excel'
     this.currentFilter = 'all'; // 'all', 'easy_run', 'tempo_run', 'interval_run', 'long_run'
+    this.selectedWeekTab = 'all'; // 'all' or specific weekId
+    this.collapsedWeeks = {}; // { [weekId]: boolean }
     
     // Calendar state (default November 2026 based on latest training log)
     this.calDate = new Date(2026, 10, 1); // 10 is November in JS (0-indexed)
@@ -584,6 +586,23 @@ class RunningTrackerApp {
     }
   }
 
+  selectWeekTab(weekId) {
+    this.selectedWeekTab = weekId;
+    this.renderCardView();
+  }
+
+  toggleWeekCollapse(weekId) {
+    this.collapsedWeeks[weekId] = !this.collapsedWeeks[weekId];
+    this.renderCardView();
+  }
+
+  setAllWeeksCollapse(collapse) {
+    this.weeksData.forEach(w => {
+      this.collapsedWeeks[w.id] = collapse;
+    });
+    this.renderCardView();
+  }
+
   renderCardView() {
     const container = document.getElementById('card-view-container');
     if (!container) return;
@@ -598,7 +617,46 @@ class RunningTrackerApp {
       return;
     }
 
-    container.innerHTML = this.weeksData.map(week => {
+    // 1. Folder / Week Tabs Bar
+    const tabsHtml = `
+      <div class="mb-5 p-2.5 rounded-2xl glass-panel border border-slate-700/60 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <button onclick="window.app.selectWeekTab('all')" 
+            class="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${this.selectedWeekTab === 'all' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60'}">
+            <i data-lucide="folder-archive" class="w-3.5 h-3.5"></i>
+            Semua Minggu (${this.weeksData.length})
+          </button>
+          ${this.weeksData.map(week => {
+            const isSelected = this.selectedWeekTab === week.id;
+            const weekKm = week.sessions.reduce((acc, s) => acc + (parseFloat(s.distance) || 0), 0).toFixed(1);
+            return `
+              <button onclick="window.app.selectWeekTab('${week.id}')"
+                class="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${isSelected ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60'}">
+                <i data-lucide="folder" class="w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-indigo-400'}"></i>
+                ${week.title}
+                <span class="text-[10px] opacity-75 font-normal">(${weekKm}k)</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+        <div class="flex items-center justify-end gap-1.5 border-t md:border-t-0 pt-2 md:pt-0 border-slate-800 shrink-0">
+          <button onclick="window.app.setAllWeeksCollapse(false)" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/50 flex items-center gap-1">
+            <i data-lucide="chevrons-down" class="w-3 h-3 text-emerald-400"></i> Buka Semua
+          </button>
+          <button onclick="window.app.setAllWeeksCollapse(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/50 flex items-center gap-1">
+            <i data-lucide="chevrons-up" class="w-3 h-3 text-amber-400"></i> Lipat Semua
+          </button>
+        </div>
+      </div>
+    `;
+
+    // 2. Filter weeks based on selected tab
+    const weeksToDisplay = this.selectedWeekTab === 'all' 
+      ? this.weeksData 
+      : this.weeksData.filter(w => w.id === this.selectedWeekTab);
+
+    // 3. Render Week Cards
+    const cardsHtml = weeksToDisplay.map(week => {
       const filteredSessions = week.sessions.filter(s => {
         if (this.currentFilter === 'all') return true;
         return s.type === this.currentFilter;
@@ -608,17 +666,31 @@ class RunningTrackerApp {
 
       const totalWeekKm = week.sessions.reduce((acc, s) => acc + (parseFloat(s.distance) || 0), 0).toFixed(1);
       const totalWeekRuns = week.sessions.length;
+      const isCollapsed = !!this.collapsedWeeks[week.id];
 
       return `
-        <div class="glass-panel rounded-2xl p-4 sm:p-5 mb-6 border border-slate-700/60 shadow-xl" id="week-card-${week.id}">
-          <div class="flex flex-wrap items-center justify-between pb-3 mb-4 border-b border-slate-700/60 gap-2">
+        <div class="glass-panel rounded-2xl mb-4 border border-slate-700/60 shadow-xl overflow-hidden transition-all" id="week-card-${week.id}">
+          <!-- Clickable Accordion Header -->
+          <div class="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-2.5 cursor-pointer hover:bg-slate-800/40 select-none transition-colors border-b ${isCollapsed ? 'border-transparent' : 'border-slate-700/60'}"
+               onclick="window.app.toggleWeekCollapse('${week.id}')">
+            
             <div class="flex items-center gap-2.5">
-              <span class="px-2.5 py-1 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 font-bold text-xs sm:text-sm tracking-wide">
+              <button type="button" class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}">
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+              </button>
+              <span class="px-2.5 py-1 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 font-bold text-xs sm:text-sm tracking-wide flex items-center gap-1.5">
+                <i data-lucide="${isCollapsed ? 'folder' : 'folder-open'}" class="w-3.5 h-3.5 text-indigo-400"></i>
                 ${week.title}
               </span>
               <span class="text-xs text-slate-400 hidden sm:inline">${week.notes || ''}</span>
+              ${isCollapsed ? `
+                <span class="text-[11px] text-amber-400/90 font-medium px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  (Dilipat • ${totalWeekKm} km)
+                </span>
+              ` : ''}
             </div>
-            <div class="flex items-center gap-2 sm:gap-3 text-xs font-medium text-slate-300">
+
+            <div class="flex items-center gap-2 sm:gap-3 text-xs font-medium text-slate-300" onclick="event.stopPropagation()">
               <span class="bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700 text-[11px] sm:text-xs">
                 Jarak: <strong class="text-white">${totalWeekKm} km</strong>
               </span>
@@ -631,13 +703,21 @@ class RunningTrackerApp {
             </div>
           </div>
 
-          <!-- Sessions Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            ${filteredSessions.map(session => this.renderSessionCard(session, week.id)).join('')}
+          <!-- Sessions Grid (Hidden when collapsed) -->
+          <div class="p-4 sm:p-5 pt-2 ${isCollapsed ? 'hidden' : ''}">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 pt-2">
+              ${filteredSessions.length > 0 ? filteredSessions.map(session => this.renderSessionCard(session, week.id)).join('') : `
+                <div class="col-span-full py-4 text-center text-xs text-slate-500 italic">
+                  Tidak ada sesi sesuai filter ini.
+                </div>
+              `}
+            </div>
           </div>
         </div>
       `;
     }).join('');
+
+    container.innerHTML = tabsHtml + cardsHtml;
 
     if (window.lucide) window.lucide.createIcons();
   }
