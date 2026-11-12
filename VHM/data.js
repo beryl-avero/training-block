@@ -301,14 +301,15 @@ const SUB_2_CONFIG = {
 };
 
 const DEFAULT_RACE_EVENT = {
-  eventName: "VHM - Half Marathon Sub 2",
+  eventName: "VHM — Half Marathon Sub 2",
   raceDate: "2026-12-13T05:30:00",
   distanceKm: 21.0975,
   targetTime: "01:59:59",
   targetPace: "5'41\"",
   location: "Road Race Course",
   bibNumber: "SUB-200",
-  notes: "Fokus race day: pacing konsisten 5'41\"/km, hidrasi di tiap water station, split negatif di km 15-21."
+  notes: "Fokus race day: pacing konsisten 5'41\"/km, hidrasi di tiap water station, split negatif di km 15-21.",
+  logo: null
 };
 
 // Global exports for browser compatibility

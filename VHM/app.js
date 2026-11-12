@@ -138,7 +138,107 @@ class RunningTrackerApp {
     const elLoc = document.getElementById('countdown-event-location');
     if (elLoc) elLoc.innerHTML = `<i data-lucide="map-pin" class="w-3.5 h-3.5"></i> ${this.raceEvent.location || 'Road Race'} ${this.raceEvent.bibNumber ? '• BIB: ' + this.raceEvent.bibNumber : ''}`;
 
+    // Update Hero Logo
+    const heroLogoImg = document.getElementById('hero-event-logo-img');
+    const heroLogoIcon = document.getElementById('hero-event-logo-icon');
+    if (heroLogoImg && heroLogoIcon) {
+      if (this.raceEvent.logo) {
+        heroLogoImg.src = this.raceEvent.logo;
+        heroLogoImg.classList.remove('hidden');
+        heroLogoIcon.classList.add('hidden');
+      } else {
+        heroLogoImg.src = '';
+        heroLogoImg.classList.add('hidden');
+        heroLogoIcon.classList.remove('hidden');
+      }
+    }
+
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  // Handle Logo Upload and Compression
+  async handleLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.showToast('Harap pilih file gambar (PNG, JPG, WebP)!', 'error');
+      return;
+    }
+
+    try {
+      this.tempLogoBase64 = await this.resizeAndCompressImage(file, 300, 300);
+      this.updateModalLogoPreview();
+      this.showToast('Foto logo berhasil dipilih!');
+    } catch (err) {
+      console.error('Gagal memproses gambar logo:', err);
+      this.showToast('Gagal memproses gambar logo!', 'error');
+    }
+  }
+
+  resizeAndCompressImage(file, maxWidth = 300, maxHeight = 300) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to WebP or JPEG for compact size
+          resolve(canvas.toDataURL('image/webp', 0.85));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  removeEventLogo() {
+    this.tempLogoBase64 = null;
+    const fileInput = document.getElementById('event-input-logo');
+    if (fileInput) fileInput.value = '';
+    this.updateModalLogoPreview();
+  }
+
+  updateModalLogoPreview() {
+    const previewImg = document.getElementById('event-logo-preview');
+    const placeholder = document.getElementById('event-logo-placeholder');
+    const btnRemove = document.getElementById('btn-remove-logo');
+
+    if (previewImg && placeholder && btnRemove) {
+      if (this.tempLogoBase64) {
+        previewImg.src = this.tempLogoBase64;
+        previewImg.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        btnRemove.classList.remove('hidden');
+      } else {
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        btnRemove.classList.add('hidden');
+      }
+    }
   }
 
   // Open & Close Event Modal
@@ -151,6 +251,10 @@ class RunningTrackerApp {
     document.getElementById('event-input-location').value = this.raceEvent.location || '';
     document.getElementById('event-input-bib').value = this.raceEvent.bibNumber || '';
     document.getElementById('event-input-notes').value = this.raceEvent.notes || '';
+
+    // Set temp logo from current event logo
+    this.tempLogoBase64 = this.raceEvent.logo || null;
+    this.updateModalLogoPreview();
 
     document.getElementById('modal-event').classList.remove('hidden');
   }
@@ -175,7 +279,8 @@ class RunningTrackerApp {
       targetPace: document.getElementById('event-input-pace').value.trim() || "5'41\"",
       location: document.getElementById('event-input-location').value.trim() || "Road Race Course",
       bibNumber: document.getElementById('event-input-bib').value.trim() || "",
-      notes: document.getElementById('event-input-notes').value.trim() || ""
+      notes: document.getElementById('event-input-notes').value.trim() || "",
+      logo: this.tempLogoBase64 || null
     };
 
     this.saveEventData();

@@ -121,34 +121,42 @@
       <div class="absolute -left-16 -bottom-16 w-56 h-56 bg-rose-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
       <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-        <div>
-          <div class="flex items-center gap-2 mb-1.5">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 uppercase tracking-wider">
-              <i data-lucide="flame" class="w-3 h-3"></i>
-              Target Event Lomba
-            </span>
-            <button onclick="window.app.openEventModal()" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 transition-colors">
-              <i data-lucide="edit-3" class="w-3 h-3"></i> Atur Event
-            </button>
+        <div class="flex items-start sm:items-center gap-3.5 sm:gap-4">
+          <!-- Logo Container -->
+          <div id="hero-event-logo-container" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-rose-500/20 border border-indigo-500/30 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-indigo-500/15">
+            <img id="hero-event-logo-img" src="" alt="Logo Acara" class="w-full h-full object-cover hidden">
+            <i id="hero-event-logo-icon" data-lucide="trophy" class="w-7 h-7 sm:w-8 sm:h-8 text-amber-400"></i>
           </div>
-          <h2 id="countdown-event-name" class="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight">
-            VHM — Half Marathon Sub 2
-          </h2>
-          <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-slate-300">
-            <span class="flex items-center gap-1 text-indigo-300 font-medium">
-              <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-              <span id="countdown-event-date">Minggu, 13 Desember 2026</span>
-            </span>
-            <span class="text-slate-600 hidden sm:inline">•</span>
-            <span class="flex items-center gap-1 text-amber-400 font-mono-numbers font-semibold">
-              <i data-lucide="target" class="w-3.5 h-3.5"></i>
-              Target: <span id="countdown-event-target">&lt; 02:00:00 (5'41"/km)</span>
-            </span>
-            <span class="text-slate-600 hidden sm:inline">•</span>
-            <span id="countdown-event-location" class="flex items-center gap-1 text-slate-400">
-              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
-              Road Race Course
-            </span>
+
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 uppercase tracking-wider">
+                <i data-lucide="flame" class="w-3 h-3"></i>
+                Target Event Lomba
+              </span>
+              <button onclick="window.app.openEventModal()" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 transition-colors">
+                <i data-lucide="edit-3" class="w-3 h-3"></i> Atur Event
+              </button>
+            </div>
+            <h2 id="countdown-event-name" class="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight">
+              VHM — Half Marathon Sub 2
+            </h2>
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-slate-300">
+              <span class="flex items-center gap-1 text-indigo-300 font-medium">
+                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                <span id="countdown-event-date">Minggu, 13 Desember 2026</span>
+              </span>
+              <span class="text-slate-600 hidden sm:inline">•</span>
+              <span class="flex items-center gap-1 text-amber-400 font-mono-numbers font-semibold">
+                <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                Target: <span id="countdown-event-target">&lt; 02:00:00 (5'41"/km)</span>
+              </span>
+              <span class="text-slate-600 hidden sm:inline">•</span>
+              <span id="countdown-event-location" class="flex items-center gap-1 text-slate-400">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                Road Race Course
+              </span>
+            </div>
           </div>
         </div>
 
@@ -624,6 +632,30 @@
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Event / Lomba</label>
           <input type="text" id="event-input-name" required placeholder="VHM — Half Marathon Sub 2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Logo Upload Field -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Logo / Gambar Acara Lomba</label>
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div id="event-logo-preview-box" class="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+              <img id="event-logo-preview" src="" alt="Preview Logo" class="w-full h-full object-cover hidden">
+              <i id="event-logo-placeholder" data-lucide="image" class="w-6 h-6 text-slate-500"></i>
+            </div>
+            <div class="flex-1">
+              <input type="file" id="event-input-logo" accept="image/*" class="hidden" onchange="window.app.handleLogoUpload(event)">
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="document.getElementById('event-input-logo').click()" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  Pilih Foto Logo
+                </button>
+                <button type="button" id="btn-remove-logo" onclick="window.app.removeEventLogo()" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold transition-colors">
+                  Hapus
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">Format PNG, JPG, WebP. Logo otomatis tersimpan ke website.</p>
+            </div>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
