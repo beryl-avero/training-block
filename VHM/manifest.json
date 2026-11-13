@@ -1,0 +1,22 @@
+{
+  "name": "VHM SUB 2",
+  "short_name": "VHM SUB 2",
+  "description": "Half Marathon Sub 2 Training Tracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#080d1a",
+  "theme_color": "#080d1a",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+

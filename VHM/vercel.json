@@ -1,5 +1,6 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/VHM", "destination": "/VHM/index.html" }
+  ]
 }
-

@@ -803,7 +803,7 @@ class RunningTrackerApp {
             </div>
             <!-- Rows Segmen Tempo Rapi & Sejajar -->
             <div class="divide-y divide-slate-800/60 max-h-36 overflow-y-auto">
-              ${s.segments.map(seg => `
+              ${s.segments.filter(seg => (parseFloat(seg.distance) > 0 || (seg.time && seg.time !== '-'))).map(seg => `
                 <div class="grid grid-cols-12 gap-1 px-2.5 py-1.5 items-center hover:bg-slate-800/40 transition-colors">
                   <div class="col-span-5 font-medium text-slate-200 truncate" title="${seg.name}">
                     ${seg.name}
@@ -1132,47 +1132,57 @@ class RunningTrackerApp {
   // "1:40" -> 1 jam 40 menit (01:40:00)
   // "30" -> 30 menit (30:00)
   // "45:12" -> 45 menit 12 detik (45:12)
-  // "1:40:15" -> 1 jam 40 menit 15 detik (01:40:15)
-  parseAndFormatRunningTime(timeStr) {
+  // "40:00" -> 40 menit 00 detik (40:00)
+  // Support titik (.) atau koma (,) di keyboard HP: "1.40" / "45.12" / "19.00"
+  // Di breakdown segmen (tempo/interval): 23:00 = 23m, 12:00 = 12m, 8:00 = 8m, 1:54 = 1m 54s
+  parseAndFormatRunningTime(timeStr, isSegment = false) {
     if (!timeStr) return { formatted: '', totalSeconds: 0, minutes: 0, preview: '' };
-    const str = timeStr.toString().trim();
+    let str = timeStr.toString().trim();
     if (!str) return { formatted: '', totalSeconds: 0, minutes: 0, preview: '' };
 
-    const clean = str.replace(/[^\d:]/g, '');
-    const parts = clean.split(':').map(p => parseInt(p, 10) || 0);
+    // Ubah titik, koma, spasi, atau petik jadi pemisah titik dua (kompatibel keyboard angka HP)
+    str = str.replace(/[.,'\s]/g, ':').replace(/[^\d:]/g, '');
+    str = str.replace(/:+/g, ':').replace(/^:|:$/g, '');
+
+    const parts = str.split(':').map(p => parseInt(p, 10) || 0);
 
     let hours = 0;
     let minutes = 0;
     let seconds = 0;
 
     if (parts.length === 1) {
-      // Single number (misal "30" -> 30 menit)
       const val = parts[0];
-      if (val >= 60) {
+      // Jika user ketik 4 digit tanpa tanda baca (misal 4000 -> 40:00, 4512 -> 45:12)
+      if (val >= 1000) {
+        minutes = Math.floor(val / 100);
+        seconds = val % 100;
+      } else if (val >= 60) {
         hours = Math.floor(val / 60);
         minutes = val % 60;
       } else {
+        // Contoh user ketik "30" -> 30 menit, "45" -> 45 menit
         minutes = val;
       }
     } else if (parts.length === 2) {
-      if (parts[0] < 10 && parts[0] > 0) {
-        // H:MM (misal "1:40" -> 1 jam 40 menit)
-        hours = parts[0];
-        minutes = parts[1];
-      } else if (parts[0] === 0) {
-        // 0:45 -> 45 menit
-        minutes = parts[1];
+      const a = parts[0];
+      const b = parts[1];
+      if (isSegment) {
+        // Segmen tempo / repetisi interval: A:B selalu MM:SS (misal 23:00 = 23m, 8:00 = 8m, 1:54 = 1m 54s)
+        minutes = a;
+        seconds = b;
       } else {
-        // MM:SS (misal "45:12" -> 45 menit 12 detik)
-        minutes = parts[0];
-        seconds = parts[1];
-        if (minutes >= 60) {
-          hours = Math.floor(minutes / 60);
-          minutes = minutes % 60;
+        // Input utama sesi lari:
+        // 1:40 -> 1 jam 40 menit (a = 1, 2, atau 3 jam)
+        // 40:00 -> 40 menit 00 detik (a >= 4 menit)
+        if (a >= 1 && a <= 3) {
+          hours = a;
+          minutes = b;
+        } else {
+          minutes = a;
+          seconds = b;
         }
       }
     } else if (parts.length >= 3) {
-      // H:MM:SS (misal 1:40:15 atau 0:45:12)
       hours = parts[0];
       minutes = parts[1];
       seconds = parts[2];
@@ -1213,35 +1223,40 @@ class RunningTrackerApp {
 
   paceToSeconds(paceStr) {
     if (!paceStr) return null;
-    const clean = paceStr.toString().replace(/[^\d:']/g, '');
-    let parts = clean.split("'");
-    if (parts.length < 2) parts = clean.split(':');
+    let str = paceStr.toString().trim();
+    if (!str) return null;
+
+    // Bersihkan dan dukung berbagai format user: 6'51", 6'51, 6.51, 6,51, 6:51, 6 51, 651
+    str = str.replace(/["',]/g, ':').replace(/[.'\s]/g, ':');
+    str = str.replace(/:+/g, ':').replace(/^:|:$/g, '');
+
+    const parts = str.split(':').map(p => parseInt(p, 10) || 0);
     if (parts.length >= 2) {
-      const min = parseInt(parts[0], 10) || 0;
-      const sec = parseInt(parts[1], 10) || 0;
-      return min * 60 + sec;
-    }
-    const num = parseFloat(clean);
-    if (!isNaN(num)) {
-      const min = Math.floor(num);
-      const sec = Math.round((num - min) * 60);
-      return min * 60 + sec;
+      return parts[0] * 60 + parts[1];
+    } else if (parts.length === 1) {
+      const num = parts[0];
+      if (num >= 60) {
+        return Math.floor(num / 100) * 60 + (num % 100);
+      }
+      return num * 60;
     }
     return null;
   }
 
   secondsToPace(seconds) {
     if (!seconds || isNaN(seconds) || seconds <= 0 || !isFinite(seconds)) return "-";
-    const m = Math.floor(seconds / 60);
-    const s = Math.round(seconds % 60);
+    const totalSec = Math.round(seconds);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
     return `${m}'${s < 10 ? '0' : ''}${s}"`;
   }
 
   secondsToTimeString(totalSeconds) {
     if (!totalSeconds || totalSeconds <= 0) return '';
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    const total = Math.round(totalSeconds);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
     const pad = (n) => n.toString().padStart(2, '0');
     if (hours > 0) {
       return `${hours}:${pad(minutes)}:${pad(seconds)}`;
@@ -1249,7 +1264,7 @@ class RunningTrackerApp {
     return `${pad(minutes)}:${pad(seconds)}`;
   }
 
-  // Auto-calculate: Isi 2 dari 3 (Jarak, Waktu, Pace), yang kosong otomatis terisi
+  // Auto-calculate: Isi 2 dari 3 (Jarak, Waktu, Pace), otomatis mengisi yang lainnya
   autoCalculateMetrics(trigger = 'distance') {
     const distEl = document.getElementById('field-distance');
     const timeEl = document.getElementById('field-time');
@@ -1263,20 +1278,16 @@ class RunningTrackerApp {
       distEl.value = distEl.value.replace(',', '.');
     }
 
-    const rawDist = distEl.value.trim();
-    const rawTime = timeEl.value.trim();
-    const rawPace = paceEl.value.trim();
-
-    const distance = parseFloat(rawDist);
+    const distance = parseFloat(distEl.value.trim());
     const hasDist = !isNaN(distance) && distance > 0;
 
-    const parsedTime = this.parseAndFormatRunningTime(rawTime);
+    const parsedTime = this.parseAndFormatRunningTime(timeEl.value.trim(), false);
     const hasTime = parsedTime.totalSeconds > 0;
 
-    const paceSec = this.paceToSeconds(rawPace);
+    const paceSec = this.paceToSeconds(paceEl.value.trim());
     const hasPace = paceSec !== null && paceSec > 0;
 
-    // Tampilkan pratinjau waktu (misal: 1j 40m atau 45m 12d)
+    // Tampilkan pratinjau waktu (misal: 40m atau 1j 40m)
     if (badgeEl) {
       if (hasTime && parsedTime.preview) {
         badgeEl.textContent = `⏱️ ${parsedTime.preview}`;
@@ -1287,26 +1298,32 @@ class RunningTrackerApp {
     }
 
     if (trigger === 'distance') {
-      if (hasDist && hasTime && !hasPace) {
+      if (hasDist && hasTime) {
+        // Jarak & Waktu ada -> Otomatis hitung Pace
         const pSec = Math.round(parsedTime.totalSeconds / distance);
         paceEl.value = this.secondsToPace(pSec);
-      } else if (hasDist && hasPace && !hasTime) {
+      } else if (hasDist && hasPace) {
+        // Jarak & Pace ada -> Otomatis hitung Waktu
         const totalSec = Math.round(distance * paceSec);
         timeEl.value = this.secondsToTimeString(totalSec);
       }
     } else if (trigger === 'time') {
-      if (hasTime && hasDist && !hasPace) {
+      if (hasTime && hasDist) {
+        // Waktu & Jarak ada -> Otomatis hitung Pace
         const pSec = Math.round(parsedTime.totalSeconds / distance);
         paceEl.value = this.secondsToPace(pSec);
-      } else if (hasTime && hasPace && !hasDist) {
+      } else if (hasTime && hasPace) {
+        // Waktu & Pace ada -> Otomatis hitung Jarak
         const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
         distEl.value = calcDist;
       }
     } else if (trigger === 'pace') {
-      if (hasPace && hasDist && !hasTime) {
+      if (hasPace && hasDist) {
+        // Pace & Jarak ada -> Otomatis hitung Waktu
         const totalSec = Math.round(distance * paceSec);
         timeEl.value = this.secondsToTimeString(totalSec);
-      } else if (hasPace && hasTime && !hasDist) {
+      } else if (hasPace && hasTime) {
+        // Pace & Waktu ada -> Otomatis hitung Jarak
         const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
         distEl.value = calcDist;
       }
@@ -1568,13 +1585,13 @@ class RunningTrackerApp {
     document.getElementById('interval-sets-table-body').innerHTML = '';
     document.getElementById('tempo-segments-table-body').innerHTML = '';
 
-    this.addIntervalSetRow(1, '400m', '01:56', "4'50\"", 170);
-    this.addIntervalSetRow(2, '400m', '01:54', "4'45\"", 175);
-    this.addIntervalSetRow(3, '400m', '01:52', "4'40\"", 180);
+    this.addIntervalSetRow(1, '400m', '', '', '');
+    this.addIntervalSetRow(2, '400m', '', '', '');
+    this.addIntervalSetRow(3, '400m', '', '', '');
 
-    this.addTempoSegmentRow('Warm Up', 2.0, '15:00', "7'30\"", 145);
-    this.addTempoSegmentRow('Tempo Core', 4.0, '23:00', "5'45\"", 165);
-    this.addTempoSegmentRow('Cool Down', 1.5, '12:00', "8'00\"", 150);
+    this.addTempoSegmentRow('Warm Up', '', '', '', '');
+    this.addTempoSegmentRow('Tempo Core', '', '', '', '');
+    this.addTempoSegmentRow('Cool Down', '', '', '', '');
 
     this.handleWorkoutTypeChange();
     this.updateWeekSelectorInModal();
@@ -1614,7 +1631,7 @@ class RunningTrackerApp {
     return val;
   }
 
-  addIntervalSetRow(num, target = '400m', time = '', pace = "4'45\"", hr = 175) {
+  addIntervalSetRow(num, target = '400m', time = '', pace = '', hr = '') {
     const tbody = document.getElementById('interval-sets-table-body');
     const setNum = num || (tbody.children.length + 1);
 
@@ -1622,9 +1639,9 @@ class RunningTrackerApp {
     tr.className = 'border-b border-slate-800 text-xs';
     tr.innerHTML = `
       <td class="py-1 px-1 text-slate-400 font-bold set-number-cell">${setNum}</td>
-      <td class="py-1 px-1"><input type="text" value="${target}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 set-target" placeholder="400m / 02:00"></td>
+      <td class="py-1 px-1"><input type="text" value="${target || '400m'}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 set-target" placeholder="400m / 02:00"></td>
       <td class="py-1 px-1"><input type="text" value="${time || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-amber-300 font-mono-numbers set-time" placeholder="01:54"></td>
-      <td class="py-1 px-1"><input type="text" value="${pace}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-rose-300 font-mono-numbers set-pace" placeholder="4'30\\\""></td>
+      <td class="py-1 px-1"><input type="text" value="${pace || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-rose-300 font-mono-numbers set-pace" placeholder="4'30\\\""></td>
       <td class="py-1 px-1"><input type="number" value="${hr || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-300 font-mono-numbers set-hr" placeholder="175"></td>
       <td class="py-1 px-1 text-center">
         <button type="button" onclick="this.closest('tr').remove(); window.app.renumberIntervalSets(); window.app.updateIntervalTotalsToMain();" class="text-rose-400 hover:text-rose-300">
@@ -1653,7 +1670,7 @@ class RunningTrackerApp {
       const hasDist = distKm > 0;
 
       const rawTime = timeInput.value.trim();
-      const parsedTime = this.parseAndFormatRunningTime(rawTime);
+      const parsedTime = this.parseAndFormatRunningTime(rawTime, true);
       const hasTime = parsedTime.totalSeconds > 0;
 
       const rawPace = paceInput.value.trim();
@@ -1661,39 +1678,52 @@ class RunningTrackerApp {
       const hasPace = paceSec !== null && paceSec > 0;
 
       if (trigger === 'target') {
-        if (hasDist && hasTime && !hasPace) {
+        if (hasDist && hasTime) {
           const pSec = Math.round(parsedTime.totalSeconds / distKm);
           paceInput.value = this.secondsToPace(pSec);
-        } else if (hasDist && hasPace && !hasTime) {
+        } else if (hasDist && hasPace) {
           const totalSec = Math.round(distKm * paceSec);
           timeInput.value = this.secondsToTimeString(totalSec);
         }
       } else if (trigger === 'time') {
-        if (hasTime && hasDist && !hasPace) {
+        if (hasTime && hasDist) {
           const pSec = Math.round(parsedTime.totalSeconds / distKm);
           paceInput.value = this.secondsToPace(pSec);
+        } else if (hasTime && hasPace) {
+          const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
+          targetInput.value = `${(calcDist * 1000).toFixed(0)}m`;
         }
       } else if (trigger === 'pace') {
-        if (hasPace && hasDist && !hasTime) {
+        if (hasPace && hasDist) {
           const totalSec = Math.round(distKm * paceSec);
           timeInput.value = this.secondsToTimeString(totalSec);
+        } else if (hasPace && hasTime) {
+          const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
+          targetInput.value = `${(calcDist * 1000).toFixed(0)}m`;
         }
       }
       this.updateIntervalTotalsToMain();
     };
 
-    if (targetInput) targetInput.addEventListener('input', () => handleCalc('target'));
+    if (targetInput) {
+      targetInput.addEventListener('input', () => handleCalc('target'));
+      targetInput.addEventListener('change', () => handleCalc('target'));
+    }
     if (timeInput) {
       timeInput.addEventListener('input', () => handleCalc('time'));
+      timeInput.addEventListener('change', () => handleCalc('time'));
       timeInput.addEventListener('blur', () => {
         if (timeInput.value.trim()) {
-          const parsed = this.parseAndFormatRunningTime(timeInput.value);
+          const parsed = this.parseAndFormatRunningTime(timeInput.value, true);
           if (parsed.formatted) timeInput.value = parsed.formatted;
         }
         handleCalc('time');
       });
     }
-    if (paceInput) paceInput.addEventListener('input', () => handleCalc('pace'));
+    if (paceInput) {
+      paceInput.addEventListener('input', () => handleCalc('pace'));
+      paceInput.addEventListener('change', () => handleCalc('pace'));
+    }
   }
 
   updateIntervalTotalsToMain() {
@@ -1713,7 +1743,7 @@ class RunningTrackerApp {
       const targetStr = r.querySelector('.set-target') ? r.querySelector('.set-target').value : '';
       const dist = this.parseDistanceToKm(targetStr);
       const timeStr = r.querySelector('.set-time') ? r.querySelector('.set-time').value : '';
-      const parsedTime = this.parseAndFormatRunningTime(timeStr);
+      const parsedTime = this.parseAndFormatRunningTime(timeStr, true);
 
       totalDist += dist;
       if (parsedTime.totalSeconds > 0) {
@@ -1747,15 +1777,15 @@ class RunningTrackerApp {
     cells.forEach((cell, idx) => { cell.textContent = idx + 1; });
   }
 
-  addTempoSegmentRow(name = 'Tempo Core', dist = 3.0, time = '18:00', pace = "6'00\"", hr = 165) {
+  addTempoSegmentRow(name = 'Tempo Core', dist = '', time = '', pace = '', hr = '') {
     const tbody = document.getElementById('tempo-segments-table-body');
     const tr = document.createElement('tr');
     tr.className = 'border-b border-slate-800 text-xs';
     tr.innerHTML = `
       <td class="py-1 px-1"><input type="text" value="${name}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-name" placeholder="Nama Segmen"></td>
-      <td class="py-1 px-1"><input type="text" inputmode="decimal" value="${dist}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-dist font-mono-numbers" placeholder="km"></td>
-      <td class="py-1 px-1"><input type="text" value="${time}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-time font-mono-numbers text-amber-300" placeholder="Waktu"></td>
-      <td class="py-1 px-1"><input type="text" value="${pace}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-pace font-mono-numbers text-emerald-400" placeholder="Pace"></td>
+      <td class="py-1 px-1"><input type="text" inputmode="decimal" value="${dist !== null && dist !== undefined ? dist : ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-dist font-mono-numbers" placeholder="km"></td>
+      <td class="py-1 px-1"><input type="text" value="${time || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-time font-mono-numbers text-amber-300" placeholder="Waktu"></td>
+      <td class="py-1 px-1"><input type="text" value="${pace || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-pace font-mono-numbers text-emerald-400" placeholder="Pace"></td>
       <td class="py-1 px-1"><input type="number" value="${hr || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-hr font-mono-numbers text-rose-400" placeholder="HR"></td>
       <td class="py-1 px-1 text-center">
         <button type="button" onclick="this.closest('tr').remove(); window.app.updateTempoTotalsToMain();" class="text-rose-400 hover:text-rose-300">
@@ -1776,75 +1806,74 @@ class RunningTrackerApp {
     const timeInput = tr.querySelector('.seg-time');
     const paceInput = tr.querySelector('.seg-pace');
 
+    const runCalc = (trigger) => {
+      this.autoCalculateSegmentRow(distInput, timeInput, paceInput, trigger);
+      this.updateTempoTotalsToMain();
+    };
+
     if (distInput) {
       distInput.addEventListener('input', (e) => {
-        if (e.target.value.includes(',')) {
-          e.target.value = e.target.value.replace(',', '.');
-        }
-        this.autoCalculateSegmentRow(distInput, timeInput, paceInput, 'distance');
-        this.updateTempoTotalsToMain();
+        if (e.target.value.includes(',')) e.target.value = e.target.value.replace(',', '.');
+        runCalc('distance');
       });
+      distInput.addEventListener('change', () => runCalc('distance'));
     }
 
     if (timeInput) {
-      timeInput.addEventListener('input', () => {
-        this.autoCalculateSegmentRow(distInput, timeInput, paceInput, 'time');
-        this.updateTempoTotalsToMain();
-      });
+      timeInput.addEventListener('input', () => runCalc('time'));
+      timeInput.addEventListener('change', () => runCalc('time'));
       timeInput.addEventListener('blur', () => {
         if (timeInput.value.trim()) {
-          const parsed = this.parseAndFormatRunningTime(timeInput.value);
+          const parsed = this.parseAndFormatRunningTime(timeInput.value, true);
           if (parsed.formatted) timeInput.value = parsed.formatted;
         }
-        this.autoCalculateSegmentRow(distInput, timeInput, paceInput, 'time');
-        this.updateTempoTotalsToMain();
+        runCalc('time');
       });
     }
 
     if (paceInput) {
-      paceInput.addEventListener('input', () => {
-        this.autoCalculateSegmentRow(distInput, timeInput, paceInput, 'pace');
-        this.updateTempoTotalsToMain();
-      });
+      paceInput.addEventListener('input', () => runCalc('pace'));
+      paceInput.addEventListener('change', () => runCalc('pace'));
     }
   }
 
   autoCalculateSegmentRow(distEl, timeEl, paceEl, trigger) {
     if (!distEl || !timeEl || !paceEl) return;
 
-    const rawDist = (distEl.value || '').replace(',', '.').trim();
-    const distance = parseFloat(rawDist);
+    if (distEl.value.includes(',')) {
+      distEl.value = distEl.value.replace(',', '.');
+    }
+
+    const distance = parseFloat(distEl.value.trim());
     const hasDist = !isNaN(distance) && distance > 0;
 
-    const rawTime = (timeEl.value || '').trim();
-    const parsedTime = this.parseAndFormatRunningTime(rawTime);
+    const parsedTime = this.parseAndFormatRunningTime(timeEl.value.trim(), true);
     const hasTime = parsedTime.totalSeconds > 0;
 
-    const rawPace = (paceEl.value || '').trim();
-    const paceSec = this.paceToSeconds(rawPace);
+    const paceSec = this.paceToSeconds(paceEl.value.trim());
     const hasPace = paceSec !== null && paceSec > 0;
 
     if (trigger === 'distance') {
-      if (hasDist && hasTime && !hasPace) {
+      if (hasDist && hasTime) {
         const pSec = Math.round(parsedTime.totalSeconds / distance);
         paceEl.value = this.secondsToPace(pSec);
-      } else if (hasDist && hasPace && !hasTime) {
+      } else if (hasDist && hasPace) {
         const totalSec = Math.round(distance * paceSec);
         timeEl.value = this.secondsToTimeString(totalSec);
       }
     } else if (trigger === 'time') {
-      if (hasTime && hasDist && !hasPace) {
+      if (hasTime && hasDist) {
         const pSec = Math.round(parsedTime.totalSeconds / distance);
         paceEl.value = this.secondsToPace(pSec);
-      } else if (hasTime && hasPace && !hasDist) {
+      } else if (hasTime && hasPace) {
         const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
         distEl.value = calcDist;
       }
     } else if (trigger === 'pace') {
-      if (hasPace && hasDist && !hasTime) {
+      if (hasPace && hasDist) {
         const totalSec = Math.round(distance * paceSec);
         timeEl.value = this.secondsToTimeString(totalSec);
-      } else if (hasPace && hasTime && !hasDist) {
+      } else if (hasPace && hasTime) {
         const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
         distEl.value = calcDist;
       }
@@ -1862,7 +1891,7 @@ class RunningTrackerApp {
     rows.forEach(r => {
       const dist = parseFloat((r.querySelector('.seg-dist').value || '').replace(',', '.')) || 0;
       const timeStr = (r.querySelector('.seg-time').value || '').trim();
-      const parsed = this.parseAndFormatRunningTime(timeStr);
+      const parsed = this.parseAndFormatRunningTime(timeStr, true);
       totalDist += dist;
       totalSec += parsed.totalSeconds;
     });
