@@ -47,10 +47,13 @@ class RunningTrackerApp {
     return JSON.parse(JSON.stringify(this.initialData));
   }
 
-  saveData() {
+  saveData(skipCloud = false) {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.weeksData));
       this.showToast('Data latihan tersimpan!');
+      if (!skipCloud) {
+        this.saveToCloud();
+      }
     } catch (e) {
       console.error('Gagal menyimpan data ke localStorage', e);
       this.showToast('Gagal menyimpan data!', 'error');
@@ -69,10 +72,13 @@ class RunningTrackerApp {
     return JSON.parse(JSON.stringify(this.defaultEvent));
   }
 
-  saveEventData() {
+  saveEventData(skipCloud = false) {
     try {
       localStorage.setItem(this.eventStorageKey, JSON.stringify(this.raceEvent));
       this.showToast('Event lomba diperbarui!');
+      if (!skipCloud) {
+        this.saveToCloud();
+      }
     } catch (e) {
       console.error('Gagal menyimpan event data', e);
     }
@@ -87,6 +93,7 @@ class RunningTrackerApp {
     this.initCharts();
     this.bindEvents();
     this.updateWeekSelectorInModal();
+    this.initCloudSync();
   }
 
   // Week-week lama yang tidak berjalan otomatis di-minimize saat buka website
@@ -1379,12 +1386,305 @@ class RunningTrackerApp {
   openSyncModal() {
     const modal = document.getElementById('modal-sync');
     if (modal) modal.classList.remove('hidden');
+    this.updateCloudUIStatus(!!this.supabase);
     if (window.lucide) window.lucide.createIcons();
   }
 
   closeSyncModal() {
     const modal = document.getElementById('modal-sync');
     if (modal) modal.classList.add('hidden');
+  }
+
+  switchSyncTab(tab = 'cloud') {
+    const tabCloudBtn = document.getElementById('tab-btn-sync-cloud');
+    const tabManualBtn = document.getElementById('tab-btn-sync-manual');
+    const tabCloudContent = document.getElementById('tab-content-sync-cloud');
+    const tabManualContent = document.getElementById('tab-content-sync-manual');
+
+    if (tab === 'cloud') {
+      if (tabCloudBtn) tabCloudBtn.className = 'flex-1 py-2 text-center text-xs font-bold border-b-2 border-indigo-500 text-indigo-400 flex items-center justify-center gap-1.5 transition-all';
+      if (tabManualBtn) tabManualBtn.className = 'flex-1 py-2 text-center text-xs font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center justify-center gap-1.5 transition-all';
+      if (tabCloudContent) tabCloudContent.classList.remove('hidden');
+      if (tabManualContent) tabManualContent.classList.add('hidden');
+    } else {
+      if (tabManualBtn) tabManualBtn.className = 'flex-1 py-2 text-center text-xs font-bold border-b-2 border-indigo-500 text-indigo-400 flex items-center justify-center gap-1.5 transition-all';
+      if (tabCloudBtn) tabCloudBtn.className = 'flex-1 py-2 text-center text-xs font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center justify-center gap-1.5 transition-all';
+      if (tabManualContent) tabManualContent.classList.remove('hidden');
+      if (tabCloudContent) tabCloudContent.classList.add('hidden');
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  // Cloud Database (Supabase) Initialization
+  initCloudSync() {
+    this.supabaseConfigKey = 'vhm_supabase_config_v1';
+    this.supabase = null;
+    this.realtimeChannel = null;
+
+    try {
+      const saved = localStorage.getItem(this.supabaseConfigKey);
+      if (saved) {
+        const { url, key } = JSON.parse(saved);
+        if (url && key && window.supabase && window.supabase.createClient) {
+          this.supabase = window.supabase.createClient(url, key);
+          this.updateCloudUIStatus(true);
+          // Tarik data terbaru saat pertama kali aplikasi dibuka
+          this.fetchCloudData(false);
+          this.subscribeCloudRealtime();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal memuat konfigurasi cloud:', e);
+    }
+    this.updateCloudUIStatus(false);
+  }
+
+  updateCloudUIStatus(connected = false, customMsg = null) {
+    const dot = document.getElementById('cloud-indicator-dot');
+    const text = document.getElementById('cloud-status-text');
+    const sub = document.getElementById('cloud-status-sub');
+    const btnTest = document.getElementById('btn-cloud-test');
+    const btnDisconnect = document.getElementById('btn-cloud-disconnect');
+    const navDot = document.getElementById('nav-cloud-dot');
+    const urlInput = document.getElementById('field-supabase-url');
+    const keyInput = document.getElementById('field-supabase-key');
+
+    if (connected) {
+      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400/50';
+      if (text) {
+        text.className = 'font-bold text-emerald-400';
+        text.textContent = 'Status: 🟢 Terhubung ke Cloud';
+      }
+      if (sub) {
+        sub.className = 'text-[10px] text-emerald-300/80';
+        sub.textContent = customMsg || 'Sinkronisasi otomatis aktif secara realtime di HP & Laptop';
+      }
+      if (btnTest) btnTest.classList.remove('hidden');
+      if (btnDisconnect) btnDisconnect.classList.remove('hidden');
+      if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50';
+
+      try {
+        const saved = localStorage.getItem(this.supabaseConfigKey);
+        if (saved) {
+          const cfg = JSON.parse(saved);
+          if (urlInput && !urlInput.value) urlInput.value = cfg.url || '';
+          if (keyInput && !keyInput.value) keyInput.value = cfg.key || '';
+        }
+      } catch (e) {}
+    } else {
+      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+      if (text) {
+        text.className = 'font-bold text-slate-300';
+        text.textContent = 'Status: ⚪ Belum Terhubung';
+      }
+      if (sub) {
+        sub.className = 'text-[10px] text-slate-500';
+        sub.textContent = 'Hubungkan cloud agar HP & laptop sinkron otomatis';
+      }
+      if (btnTest) btnTest.classList.add('hidden');
+      if (btnDisconnect) btnDisconnect.classList.add('hidden');
+      if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+    }
+  }
+
+  async connectCloudSync() {
+    const urlInput = document.getElementById('field-supabase-url');
+    const keyInput = document.getElementById('field-supabase-key');
+
+    if (!urlInput || !keyInput) return;
+    const url = urlInput.value.trim();
+    const key = keyInput.value.trim();
+
+    if (!url || !key) {
+      this.showToast('Harap isi Project URL dan Anon Key Supabase!', 'error');
+      return;
+    }
+
+    if (!url.startsWith('https://')) {
+      this.showToast('Project URL harus diawali dengan https://', 'error');
+      return;
+    }
+
+    if (!window.supabase || !window.supabase.createClient) {
+      this.showToast('Pustaka Supabase belum termuat, periksa koneksi internet!', 'error');
+      return;
+    }
+
+    this.showToast('Menghubungkan ke Cloud Database...');
+
+    try {
+      const client = window.supabase.createClient(url, key);
+      // Tes koneksi dengan melakukan query ke tabel vhm_data
+      const { data, error } = await client.from('vhm_data').select('*').limit(1);
+
+      if (error) {
+        throw new Error(error.message || 'Gagal membaca tabel vhm_data');
+      }
+
+      this.supabase = client;
+      localStorage.setItem(this.supabaseConfigKey, JSON.stringify({ url, key }));
+      this.updateCloudUIStatus(true, 'Berhasil terhubung ke Supabase!');
+
+      // Cek apakah di cloud sudah ada data tersimpan
+      const { data: existingData } = await this.supabase
+        .from('vhm_data')
+        .select('data')
+        .eq('id', 'primary_training_data')
+        .maybeSingle();
+
+      if (existingData && existingData.data && existingData.data.weeksData && existingData.data.weeksData.length > 0) {
+        // Ambil data dari cloud
+        this.weeksData = existingData.data.weeksData;
+        if (existingData.data.raceEvent) this.raceEvent = existingData.data.raceEvent;
+        this.saveData(true);
+        this.renderSummaryStats();
+        this.renderCalendar();
+        this.renderTrainingContent();
+        this.initCharts();
+        this.showToast('✅ Berhasil terhubung! Data disinkronkan dari Cloud.');
+      } else {
+        // Jika di cloud masih kosong, upload data lokal sekarang sebagai data awal
+        await this.saveToCloud();
+        this.showToast('✅ Berhasil terhubung! Data lokal diunggah ke Cloud.');
+      }
+
+      this.subscribeCloudRealtime();
+    } catch (err) {
+      console.error('Koneksi cloud gagal:', err);
+      this.showToast(`Gagal terhubung: ${err.message || 'Periksa tabel vhm_data'}`, 'error');
+    }
+  }
+
+  disconnectCloudSync() {
+    if (!confirm('Putuskan sambungan ke Cloud Database?')) return;
+    try {
+      if (this.realtimeChannel && this.supabase) {
+        this.supabase.removeChannel(this.realtimeChannel);
+      }
+    } catch (e) {}
+    this.supabase = null;
+    this.realtimeChannel = null;
+    localStorage.removeItem(this.supabaseConfigKey);
+    this.updateCloudUIStatus(false);
+    this.showToast('Sambungan Cloud Database diputuskan.');
+  }
+
+  async saveToCloud() {
+    if (!this.supabase) return;
+    try {
+      const bundle = {
+        vhmVersion: 1,
+        timestamp: Date.now(),
+        weeksData: this.weeksData,
+        raceEvent: this.raceEvent
+      };
+
+      const { error } = await this.supabase
+        .from('vhm_data')
+        .upsert({
+          id: 'primary_training_data',
+          data: bundle,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (error) {
+        console.warn('Gagal simpan ke cloud:', error.message);
+      } else {
+        console.log('⚡ Data otomatis tersimpan ke cloud Supabase');
+      }
+    } catch (e) {
+      console.warn('Error saveToCloud:', e);
+    }
+  }
+
+  async fetchCloudData(showNotification = true) {
+    if (!this.supabase) return;
+    try {
+      const { data, error } = await this.supabase
+        .from('vhm_data')
+        .select('data, updated_at')
+        .eq('id', 'primary_training_data')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data && data.data && data.data.weeksData && Array.isArray(data.data.weeksData)) {
+        this.weeksData = data.data.weeksData;
+        if (data.data.raceEvent) this.raceEvent = data.data.raceEvent;
+        this.saveData(true);
+        this.renderSummaryStats();
+        this.renderCalendar();
+        this.renderTrainingContent();
+        this.initCharts();
+        if (showNotification) this.showToast('⚡ Data diperbarui dari Cloud!');
+      }
+    } catch (e) {
+      console.warn('Gagal fetch data dari cloud:', e);
+      if (showNotification) this.showToast('Gagal menarik data cloud: ' + e.message, 'error');
+    }
+  }
+
+  subscribeCloudRealtime() {
+    if (!this.supabase) return;
+    try {
+      if (this.realtimeChannel) {
+        this.supabase.removeChannel(this.realtimeChannel);
+      }
+
+      this.realtimeChannel = this.supabase
+        .channel('vhm_realtime_channel')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'vhm_data' },
+          (payload) => {
+            if (payload && payload.new && payload.new.data) {
+              const cloudBundle = payload.new.data;
+              if (cloudBundle.weeksData && Array.isArray(cloudBundle.weeksData)) {
+                this.weeksData = cloudBundle.weeksData;
+                if (cloudBundle.raceEvent) this.raceEvent = cloudBundle.raceEvent;
+                this.saveData(true);
+                this.renderSummaryStats();
+                this.renderCalendar();
+                this.renderTrainingContent();
+                this.initCharts();
+                this.showToast('⚡ Catatan lari baru masuk dari perangkat lain!');
+              }
+            }
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn('Realtime subscription error:', e);
+    }
+  }
+
+  testCloudConnection() {
+    this.fetchCloudData(true);
+  }
+
+  copySupabaseSQL() {
+    const sql = `-- Salin dan jalankan perintah ini di menu SQL Editor Supabase:
+create table if not exists vhm_data (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table vhm_data enable row level security;
+
+create policy "Public Access" on vhm_data
+  for all using (true) with check (true);
+`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(sql).then(() => {
+        this.showToast('Query SQL tabel Supabase berhasil disalin!');
+      }).catch(() => {
+        this.fallbackCopyText(sql);
+      });
+    } else {
+      this.fallbackCopyText(sql);
+    }
   }
 
   copySyncCode() {
