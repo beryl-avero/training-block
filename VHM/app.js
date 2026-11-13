@@ -79,6 +79,7 @@ class RunningTrackerApp {
   }
 
   init() {
+    this.initCollapsedWeeks();
     this.initCountdown();
     this.renderSummaryStats();
     this.renderCalendar();
@@ -86,6 +87,17 @@ class RunningTrackerApp {
     this.initCharts();
     this.bindEvents();
     this.updateWeekSelectorInModal();
+  }
+
+  // Week-week lama yang tidak berjalan otomatis di-minimize saat buka website
+  initCollapsedWeeks() {
+    this.collapsedWeeks = {};
+    if (this.weeksData && this.weeksData.length > 0) {
+      const lastIdx = this.weeksData.length - 1;
+      this.weeksData.forEach((w, idx) => {
+        this.collapsedWeeks[w.id] = (idx < lastIdx);
+      });
+    }
   }
 
   // Live Countdown Timer
@@ -748,31 +760,66 @@ class RunningTrackerApp {
         <div class="mt-2.5 pt-2.5 border-t border-slate-700/60 text-xs">
           <div class="text-[10px] font-semibold text-rose-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
             <span>${s.setsTitle || 'Interval Sets'}</span>
-            <span class="text-slate-400 font-normal">${s.sets.length} repetisi</span>
+            <span class="text-[10px] font-normal text-slate-400">${s.sets.length} repetisi</span>
           </div>
-          <div class="space-y-1 max-h-32 overflow-y-auto pr-1">
-            ${s.sets.map(st => `
-              <div class="flex items-center justify-between py-0.5 px-2 rounded bg-slate-800/80 border border-slate-700/50 text-[11px]">
-                <span class="text-slate-300">Set ${st.setNumber} (${st.target})</span>
-                <span class="font-mono-numbers text-rose-300 font-semibold">${st.pace}</span>
-                <span class="text-slate-400 text-[10px]">HR ${st.hr || '-'}</span>
-              </div>
-            `).join('')}
+          <div class="rounded-lg bg-slate-900/80 border border-slate-800 overflow-hidden text-[11px]">
+            <!-- Header Kolom Keterangan -->
+            <div class="grid grid-cols-12 gap-1 px-2.5 py-1 bg-slate-800/90 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+              <div class="col-span-2">Set</div>
+              <div class="col-span-3 text-center">Target</div>
+              <div class="col-span-3 text-center">Waktu</div>
+              <div class="col-span-2 text-center">Pace</div>
+              <div class="col-span-2 text-right">HR</div>
+            </div>
+            <!-- Rows Interval Rapi & Sejajar -->
+            <div class="divide-y divide-slate-800/60 max-h-36 overflow-y-auto">
+              ${s.sets.map(st => `
+                <div class="grid grid-cols-12 gap-1 px-2.5 py-1.5 items-center hover:bg-slate-800/40 transition-colors">
+                  <div class="col-span-2 font-bold text-slate-400">#${st.setNumber}</div>
+                  <div class="col-span-3 text-center font-medium text-slate-200 truncate" title="${st.target}">${st.target || '-'}</div>
+                  <div class="col-span-3 text-center font-mono-numbers text-amber-300 font-semibold">${st.time || '-'}</div>
+                  <div class="col-span-2 text-center font-mono-numbers text-rose-300 font-semibold">${st.pace || '-'}</div>
+                  <div class="col-span-2 text-right font-mono-numbers text-slate-300 text-[10px]">${st.hr ? st.hr : '-'}</div>
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
       `;
     } else if (s.type === 'tempo_run' && s.segments && s.segments.length > 0) {
       detailSectionHtml = `
         <div class="mt-2.5 pt-2.5 border-t border-slate-700/60 text-xs">
-          <div class="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1.5">Segmen Tempo</div>
-          <div class="space-y-1 max-h-32 overflow-y-auto pr-1">
-            ${s.segments.map(seg => `
-              <div class="flex items-center justify-between py-0.5 px-2 rounded bg-slate-800/70 border border-slate-700/40 text-[11px]">
-                <span class="truncate max-w-[100px] text-slate-300" title="${seg.name}">${seg.name}</span>
-                <span class="font-mono-numbers text-amber-300 font-semibold">${seg.pace}</span>
-                <span class="text-slate-400 text-[10px]">${seg.distance ? seg.distance + 'k' : ''}</span>
-              </div>
-            `).join('')}
+          <div class="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+            <span>Segmen Tempo</span>
+            <span class="text-[10px] font-normal text-slate-400">${s.segments.length} fase</span>
+          </div>
+          <div class="rounded-lg bg-slate-900/80 border border-slate-800 overflow-hidden text-[11px]">
+            <!-- Header Kolom Keterangan Sejajar -->
+            <div class="grid grid-cols-12 gap-1 px-2.5 py-1 bg-slate-800/90 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+              <div class="col-span-5">Fase / Segmen</div>
+              <div class="col-span-3 text-center">Pace</div>
+              <div class="col-span-2 text-right">Jarak</div>
+              <div class="col-span-2 text-right">Waktu</div>
+            </div>
+            <!-- Rows Segmen Tempo Rapi & Sejajar -->
+            <div class="divide-y divide-slate-800/60 max-h-36 overflow-y-auto">
+              ${s.segments.map(seg => `
+                <div class="grid grid-cols-12 gap-1 px-2.5 py-1.5 items-center hover:bg-slate-800/40 transition-colors">
+                  <div class="col-span-5 font-medium text-slate-200 truncate" title="${seg.name}">
+                    ${seg.name}
+                  </div>
+                  <div class="col-span-3 text-center font-mono-numbers text-amber-300 font-bold">
+                    ${seg.pace && seg.pace !== '-' ? seg.pace : '-'}
+                  </div>
+                  <div class="col-span-2 text-right font-mono-numbers text-slate-300">
+                    ${seg.distance ? seg.distance + 'k' : '-'}
+                  </div>
+                  <div class="col-span-2 text-right font-mono-numbers text-slate-400 text-[10px]">
+                    ${seg.time && seg.time !== '-' ? seg.time : '-'}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
       `;
@@ -1081,13 +1128,87 @@ class RunningTrackerApp {
   }
 
   // ================= HELPERS & CONVERTERS =================
+  // Standardize user time input:
+  // "1:40" -> 1 jam 40 menit (01:40:00)
+  // "30" -> 30 menit (30:00)
+  // "45:12" -> 45 menit 12 detik (45:12)
+  // "1:40:15" -> 1 jam 40 menit 15 detik (01:40:15)
+  parseAndFormatRunningTime(timeStr) {
+    if (!timeStr) return { formatted: '', totalSeconds: 0, minutes: 0, preview: '' };
+    const str = timeStr.toString().trim();
+    if (!str) return { formatted: '', totalSeconds: 0, minutes: 0, preview: '' };
+
+    const clean = str.replace(/[^\d:]/g, '');
+    const parts = clean.split(':').map(p => parseInt(p, 10) || 0);
+
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+
+    if (parts.length === 1) {
+      // Single number (misal "30" -> 30 menit)
+      const val = parts[0];
+      if (val >= 60) {
+        hours = Math.floor(val / 60);
+        minutes = val % 60;
+      } else {
+        minutes = val;
+      }
+    } else if (parts.length === 2) {
+      if (parts[0] < 10 && parts[0] > 0) {
+        // H:MM (misal "1:40" -> 1 jam 40 menit)
+        hours = parts[0];
+        minutes = parts[1];
+      } else if (parts[0] === 0) {
+        // 0:45 -> 45 menit
+        minutes = parts[1];
+      } else {
+        // MM:SS (misal "45:12" -> 45 menit 12 detik)
+        minutes = parts[0];
+        seconds = parts[1];
+        if (minutes >= 60) {
+          hours = Math.floor(minutes / 60);
+          minutes = minutes % 60;
+        }
+      }
+    } else if (parts.length >= 3) {
+      // H:MM:SS (misal 1:40:15 atau 0:45:12)
+      hours = parts[0];
+      minutes = parts[1];
+      seconds = parts[2];
+    }
+
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const totalMinutes = totalSeconds / 60;
+
+    const pad = (n) => n.toString().padStart(2, '0');
+    let formatted = '';
+    let preview = '';
+
+    if (hours > 0) {
+      formatted = `${hours}:${pad(minutes)}:${pad(seconds)}`;
+      preview = `${hours}j ${minutes}m${seconds > 0 ? ' ' + seconds + 'd' : ''}`;
+    } else {
+      formatted = `${pad(minutes)}:${pad(seconds)}`;
+      preview = `${minutes}m${seconds > 0 ? ' ' + seconds + 'd' : ''}`;
+    }
+
+    return {
+      formatted,
+      totalSeconds,
+      minutes: totalMinutes,
+      preview,
+      hours,
+      mins: minutes,
+      secs: seconds
+    };
+  }
+
   timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     if (typeof timeStr === 'number') return timeStr;
-    const parts = timeStr.toString().split(':').map(Number);
-    if (parts.length === 3) return parts[0] * 60 + parts[1] + parts[2] / 60;
-    if (parts.length === 2) return parts[0] + parts[1] / 60;
-    return parseFloat(timeStr) || 0;
+    const parsed = this.parseAndFormatRunningTime(timeStr);
+    return parsed.minutes || 0;
   }
 
   paceToSeconds(paceStr) {
@@ -1100,7 +1221,7 @@ class RunningTrackerApp {
       const sec = parseInt(parts[1], 10) || 0;
       return min * 60 + sec;
     }
-    const num = parseFloat(paceStr);
+    const num = parseFloat(clean);
     if (!isNaN(num)) {
       const min = Math.floor(num);
       const sec = Math.round((num - min) * 60);
@@ -1110,34 +1231,217 @@ class RunningTrackerApp {
   }
 
   secondsToPace(seconds) {
-    if (!seconds || isNaN(seconds) || seconds <= 0) return "-";
+    if (!seconds || isNaN(seconds) || seconds <= 0 || !isFinite(seconds)) return "-";
     const m = Math.floor(seconds / 60);
     const s = Math.round(seconds % 60);
     return `${m}'${s < 10 ? '0' : ''}${s}"`;
   }
 
-  calculateFormPace() {
-    const distInput = document.getElementById('field-distance');
-    const timeInput = document.getElementById('field-time');
-    const paceInput = document.getElementById('field-pace');
+  secondsToTimeString(totalSeconds) {
+    if (!totalSeconds || totalSeconds <= 0) return '';
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n) => n.toString().padStart(2, '0');
+    if (hours > 0) {
+      return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
+  }
 
-    const dist = parseFloat(distInput.value);
-    const timeVal = timeInput.value.trim();
+  // Auto-calculate: Isi 2 dari 3 (Jarak, Waktu, Pace), yang kosong otomatis terisi
+  autoCalculateMetrics(trigger = 'distance') {
+    const distEl = document.getElementById('field-distance');
+    const timeEl = document.getElementById('field-time');
+    const paceEl = document.getElementById('field-pace');
+    const badgeEl = document.getElementById('time-preview-badge');
 
-    if (!dist || dist <= 0 || !timeVal) return;
+    if (!distEl || !timeEl || !paceEl) return;
 
-    let totalSeconds = 0;
-    if (timeVal.includes(':')) {
-      const parts = timeVal.split(':').map(Number);
-      if (parts.length === 3) totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-      else if (parts.length === 2) totalSeconds = parts[0] * 60 + parts[1];
-    } else {
-      totalSeconds = parseFloat(timeVal) * 60;
+    // Otomatis ganti koma jadi titik saat user mengetik jarak
+    if (distEl.value.includes(',')) {
+      distEl.value = distEl.value.replace(',', '.');
     }
 
-    if (totalSeconds > 0) {
-      const paceSec = totalSeconds / dist;
-      paceInput.value = this.secondsToPace(paceSec);
+    const rawDist = distEl.value.trim();
+    const rawTime = timeEl.value.trim();
+    const rawPace = paceEl.value.trim();
+
+    const distance = parseFloat(rawDist);
+    const hasDist = !isNaN(distance) && distance > 0;
+
+    const parsedTime = this.parseAndFormatRunningTime(rawTime);
+    const hasTime = parsedTime.totalSeconds > 0;
+
+    const paceSec = this.paceToSeconds(rawPace);
+    const hasPace = paceSec !== null && paceSec > 0;
+
+    // Tampilkan pratinjau waktu (misal: 1j 40m atau 45m 12d)
+    if (badgeEl) {
+      if (hasTime && parsedTime.preview) {
+        badgeEl.textContent = `⏱️ ${parsedTime.preview}`;
+        badgeEl.classList.remove('hidden');
+      } else {
+        badgeEl.classList.add('hidden');
+      }
+    }
+
+    if (trigger === 'distance') {
+      if (hasDist && hasTime && !hasPace) {
+        const pSec = Math.round(parsedTime.totalSeconds / distance);
+        paceEl.value = this.secondsToPace(pSec);
+      } else if (hasDist && hasPace && !hasTime) {
+        const totalSec = Math.round(distance * paceSec);
+        timeEl.value = this.secondsToTimeString(totalSec);
+      }
+    } else if (trigger === 'time') {
+      if (hasTime && hasDist && !hasPace) {
+        const pSec = Math.round(parsedTime.totalSeconds / distance);
+        paceEl.value = this.secondsToPace(pSec);
+      } else if (hasTime && hasPace && !hasDist) {
+        const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
+        distEl.value = calcDist;
+      }
+    } else if (trigger === 'pace') {
+      if (hasPace && hasDist && !hasTime) {
+        const totalSec = Math.round(distance * paceSec);
+        timeEl.value = this.secondsToTimeString(totalSec);
+      } else if (hasPace && hasTime && !hasDist) {
+        const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
+        distEl.value = calcDist;
+      }
+    }
+  }
+
+  // Interval Mode (Berdasarkan Jarak vs Berdasarkan Waktu)
+  setIntervalMode(mode) {
+    this.intervalMode = mode; // 'distance' or 'time'
+    const btnDist = document.getElementById('btn-interval-mode-dist');
+    const btnTime = document.getElementById('btn-interval-mode-time');
+    const masterInput = document.getElementById('field-interval-master-val');
+    const labelMaster = document.getElementById('label-interval-master');
+    const thTarget = document.getElementById('th-interval-target');
+
+    if (mode === 'distance') {
+      if (btnDist) {
+        btnDist.className = 'px-2.5 py-1 rounded-md font-semibold transition-all bg-indigo-600 text-white';
+      }
+      if (btnTime) {
+        btnTime.className = 'px-2.5 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white';
+      }
+      if (labelMaster) labelMaster.textContent = 'Jarak Repetisi:';
+      if (masterInput && (!masterInput.value || masterInput.value.includes(':'))) masterInput.value = '400m';
+      if (thTarget) thTarget.textContent = 'Jarak Target';
+    } else {
+      if (btnTime) {
+        btnTime.className = 'px-2.5 py-1 rounded-md font-semibold transition-all bg-indigo-600 text-white';
+      }
+      if (btnDist) {
+        btnDist.className = 'px-2.5 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white';
+      }
+      if (labelMaster) labelMaster.textContent = 'Durasi Waktu:';
+      if (masterInput && (!masterInput.value || masterInput.value.includes('m') || masterInput.value.includes('k'))) masterInput.value = '02:00';
+      if (thTarget) thTarget.textContent = 'Durasi Target';
+    }
+  }
+
+  applyMasterIntervalValue() {
+    const masterInput = document.getElementById('field-interval-master-val');
+    if (!masterInput) return;
+    const val = masterInput.value.trim();
+    if (!val) return;
+
+    const targets = document.querySelectorAll('#interval-sets-table-body .set-target');
+    targets.forEach(input => {
+      input.value = val;
+    });
+    this.showToast(`Target repetisi diseragamkan ke ${val}`);
+  }
+
+  // ================= SINKRONISASI DATA HP ⇄ LAPTOP =================
+  openSyncModal() {
+    const modal = document.getElementById('modal-sync');
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeSyncModal() {
+    const modal = document.getElementById('modal-sync');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  copySyncCode() {
+    const bundle = {
+      vhmVersion: 1,
+      timestamp: Date.now(),
+      weeksData: this.weeksData,
+      raceEvent: this.raceEvent
+    };
+    const jsonStr = JSON.stringify(bundle);
+    const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(base64).then(() => {
+        this.showToast('Kode data berhasil disalin ke clipboard!');
+      }).catch(() => {
+        this.fallbackCopyText(base64);
+      });
+    } else {
+      this.fallbackCopyText(base64);
+    }
+  }
+
+  fallbackCopyText(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      this.showToast('Kode data berhasil disalin!');
+    } catch (e) {
+      prompt('Salin kode ini secara manual:', text);
+    }
+    document.body.removeChild(ta);
+  }
+
+  applySyncCode() {
+    const input = document.getElementById('sync-input-code');
+    if (!input || !input.value.trim()) {
+      this.showToast('Harap tempelkan kode sinkronisasi terlebih dahulu!', 'error');
+      return;
+    }
+
+    try {
+      const raw = input.value.trim();
+      let decoded = '';
+      try {
+        decoded = decodeURIComponent(escape(atob(raw)));
+      } catch (e) {
+        decoded = raw; // Maybe raw JSON was pasted
+      }
+
+      const parsed = JSON.parse(decoded);
+      if (parsed.weeksData && Array.isArray(parsed.weeksData)) {
+        this.weeksData = parsed.weeksData;
+        this.saveData();
+      }
+      if (parsed.raceEvent && typeof parsed.raceEvent === 'object') {
+        this.raceEvent = parsed.raceEvent;
+        this.saveEventData();
+      }
+
+      this.closeSyncModal();
+      this.initCountdown();
+      this.renderSummaryStats();
+      this.renderCalendar();
+      this.renderTrainingContent();
+      this.initCharts();
+      this.showToast('Sinkronisasi sukses! Data latihan telah diperbarui.');
+      input.value = '';
+    } catch (e) {
+      console.error('Gagal menerapkan sinkronisasi:', e);
+      this.showToast('Kode sinkronisasi tidak valid!', 'error');
     }
   }
 
@@ -1175,12 +1479,39 @@ class RunningTrackerApp {
       });
     });
 
-    // Auto-pace listeners in form
+    // Auto-calculate metric listeners (Jarak, Waktu, Pace)
     const distInput = document.getElementById('field-distance');
     const timeInput = document.getElementById('field-time');
-    if (distInput && timeInput) {
-      distInput.addEventListener('input', () => this.calculateFormPace());
-      timeInput.addEventListener('input', () => this.calculateFormPace());
+    const paceInput = document.getElementById('field-pace');
+
+    if (distInput) {
+      distInput.addEventListener('input', (e) => {
+        if (e.target.value.includes(',')) {
+          e.target.value = e.target.value.replace(',', '.');
+        }
+        this.autoCalculateMetrics('distance');
+      });
+    }
+
+    if (timeInput) {
+      timeInput.addEventListener('input', () => {
+        this.autoCalculateMetrics('time');
+      });
+      timeInput.addEventListener('blur', () => {
+        if (timeInput.value.trim()) {
+          const parsed = this.parseAndFormatRunningTime(timeInput.value);
+          if (parsed.formatted) {
+            timeInput.value = parsed.formatted;
+          }
+        }
+        this.autoCalculateMetrics('time');
+      });
+    }
+
+    if (paceInput) {
+      paceInput.addEventListener('input', () => {
+        this.autoCalculateMetrics('pace');
+      });
     }
 
     // Modal Workout Type Change
@@ -1224,6 +1555,9 @@ class RunningTrackerApp {
     document.getElementById('modal-session-title').textContent = 'Catat Sesi Lari Baru';
     document.getElementById('form-session').reset();
 
+    const timePreview = document.getElementById('time-preview-badge');
+    if (timePreview) timePreview.classList.add('hidden');
+
     // Hide delete button when adding new session
     const delBtn = document.getElementById('btn-modal-delete');
     if (delBtn) delBtn.classList.add('hidden');
@@ -1234,9 +1568,9 @@ class RunningTrackerApp {
     document.getElementById('interval-sets-table-body').innerHTML = '';
     document.getElementById('tempo-segments-table-body').innerHTML = '';
 
-    this.addIntervalSetRow(1, '400m', "4'50\"", 170);
-    this.addIntervalSetRow(2, '400m', "4'45\"", 175);
-    this.addIntervalSetRow(3, '400m', "4'40\"", 180);
+    this.addIntervalSetRow(1, '400m', '01:56', "4'50\"", 170);
+    this.addIntervalSetRow(2, '400m', '01:54', "4'45\"", 175);
+    this.addIntervalSetRow(3, '400m', '01:52', "4'40\"", 180);
 
     this.addTempoSegmentRow('Warm Up', 2.0, '15:00', "7'30\"", 145);
     this.addTempoSegmentRow('Tempo Core', 4.0, '23:00', "5'45\"", 165);
@@ -1259,7 +1593,7 @@ class RunningTrackerApp {
     `).join('');
   }
 
-  addIntervalSetRow(num, target = '400m', pace = "4'45\"", hr = 175) {
+  addIntervalSetRow(num, target = '400m', time = '', pace = "4'45\"", hr = 175) {
     const tbody = document.getElementById('interval-sets-table-body');
     const setNum = num || (tbody.children.length + 1);
 
@@ -1267,9 +1601,10 @@ class RunningTrackerApp {
     tr.className = 'border-b border-slate-800 text-xs';
     tr.innerHTML = `
       <td class="py-1 px-1 text-slate-400 font-bold set-number-cell">${setNum}</td>
-      <td class="py-1 px-1"><input type="text" value="${target}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 set-target" placeholder="400m"></td>
-      <td class="py-1 px-1"><input type="text" value="${pace}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 set-pace" placeholder="4'30\\\""></td>
-      <td class="py-1 px-1"><input type="number" value="${hr}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 set-hr" placeholder="175"></td>
+      <td class="py-1 px-1"><input type="text" value="${target}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 set-target" placeholder="400m / 02:00"></td>
+      <td class="py-1 px-1"><input type="text" value="${time || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-amber-300 font-mono-numbers set-time" placeholder="01:54"></td>
+      <td class="py-1 px-1"><input type="text" value="${pace}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-rose-300 font-mono-numbers set-pace" placeholder="4'30\\\""></td>
+      <td class="py-1 px-1"><input type="number" value="${hr || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-300 font-mono-numbers set-hr" placeholder="175"></td>
       <td class="py-1 px-1 text-center">
         <button type="button" onclick="this.closest('tr').remove(); window.app.renumberIntervalSets();" class="text-rose-400 hover:text-rose-300">
           <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -1291,10 +1626,10 @@ class RunningTrackerApp {
     tr.className = 'border-b border-slate-800 text-xs';
     tr.innerHTML = `
       <td class="py-1 px-1"><input type="text" value="${name}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-name" placeholder="Nama Segmen"></td>
-      <td class="py-1 px-1"><input type="number" step="0.01" value="${dist}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-dist" placeholder="km"></td>
+      <td class="py-1 px-1"><input type="text" inputmode="decimal" value="${dist}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-dist" placeholder="km"></td>
       <td class="py-1 px-1"><input type="text" value="${time}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-time" placeholder="Waktu"></td>
       <td class="py-1 px-1"><input type="text" value="${pace}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-pace" placeholder="Pace"></td>
-      <td class="py-1 px-1"><input type="number" value="${hr}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-hr" placeholder="HR"></td>
+      <td class="py-1 px-1"><input type="number" value="${hr || ''}" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 seg-hr" placeholder="HR"></td>
       <td class="py-1 px-1 text-center">
         <button type="button" onclick="this.closest('tr').remove();" class="text-rose-400 hover:text-rose-300">
           <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -1306,14 +1641,27 @@ class RunningTrackerApp {
   }
 
   handleSaveSession(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
 
     const weekId = document.getElementById('field-week-select').value;
     const type = document.getElementById('field-type').value;
     const date = document.getElementById('field-date').value;
-    const distance = parseFloat(document.getElementById('field-distance').value) || 0;
-    const time = document.getElementById('field-time').value.trim();
-    const pace = document.getElementById('field-pace').value.trim();
+    
+    // Konversi koma ke titik untuk jarak (aman dari input HP)
+    const rawDist = (document.getElementById('field-distance').value || '').replace(',', '.').trim();
+    const distance = parseFloat(rawDist) || 0;
+    
+    const rawTime = document.getElementById('field-time').value.trim();
+    const parsedTime = this.parseAndFormatRunningTime(rawTime);
+    const time = parsedTime.formatted || rawTime;
+    const timeMinutes = parsedTime.minutes || this.timeToMinutes(rawTime);
+
+    let pace = document.getElementById('field-pace').value.trim();
+    // Jika pace kosong, hitung otomatis dari waktu & jarak
+    if (!pace && distance > 0 && parsedTime.totalSeconds > 0) {
+      pace = this.secondsToPace(Math.round(parsedTime.totalSeconds / distance));
+    }
+
     const hr = parseInt(document.getElementById('field-hr').value, 10) || null;
     const location = document.getElementById('field-location').value;
     const notes = document.getElementById('field-notes').value.trim();
@@ -1335,7 +1683,7 @@ class RunningTrackerApp {
       categoryTitle,
       distance,
       time,
-      timeMinutes: this.timeToMinutes(time),
+      timeMinutes,
       pace,
       hr,
       location,
@@ -1348,22 +1696,40 @@ class RunningTrackerApp {
       rows.forEach((r, idx) => {
         sets.push({
           setNumber: idx + 1,
-          target: r.querySelector('.set-target').value.trim(),
-          pace: r.querySelector('.set-pace').value.trim(),
+          target: r.querySelector('.set-target') ? r.querySelector('.set-target').value.trim() : '',
+          time: r.querySelector('.set-time') ? r.querySelector('.set-time').value.trim() : '',
+          pace: r.querySelector('.set-pace') ? r.querySelector('.set-pace').value.trim() : '',
           hr: parseInt(r.querySelector('.set-hr').value, 10) || null
         });
       });
       sessionObj.sets = sets;
       sessionObj.setsTitle = `Interval (${sets.length > 0 ? sets[0].target : '400m'} x ${sets.length})`;
+
+      const wuDist = parseFloat((document.getElementById('field-interval-wu-dist').value || '').replace(',', '.')) || 0;
+      sessionObj.warmup = {
+        name: 'Warm Up',
+        distance: wuDist,
+        pace: document.getElementById('field-interval-wu-pace').value.trim(),
+        hr: parseInt(document.getElementById('field-interval-wu-hr').value, 10) || null
+      };
+
+      const cdDist = parseFloat((document.getElementById('field-interval-cd-dist').value || '').replace(',', '.')) || 0;
+      sessionObj.cooldown = {
+        name: 'Cool Down',
+        distance: cdDist,
+        pace: document.getElementById('field-interval-cd-pace').value.trim(),
+        hr: parseInt(document.getElementById('field-interval-cd-hr').value, 10) || null
+      };
     }
 
     if (type === 'tempo_run') {
       const rows = document.querySelectorAll('#tempo-segments-table-body tr');
       const segments = [];
       rows.forEach(r => {
+        const segDist = parseFloat((r.querySelector('.seg-dist').value || '').replace(',', '.')) || 0;
         segments.push({
           name: r.querySelector('.seg-name').value.trim(),
-          distance: parseFloat(r.querySelector('.seg-dist').value) || 0,
+          distance: segDist,
           time: r.querySelector('.seg-time').value.trim(),
           pace: r.querySelector('.seg-pace').value.trim(),
           hr: parseInt(r.querySelector('.seg-hr').value, 10) || null
@@ -1372,16 +1738,30 @@ class RunningTrackerApp {
       sessionObj.segments = segments;
     }
 
-    const targetWeek = this.weeksData.find(w => w.id === weekId);
+    const targetWeek = this.weeksData.find(w => String(w.id) === String(weekId));
     if (!targetWeek) {
       this.showToast('Minggu latihan tidak ditemukan!', 'error');
-      return;
+      return false;
     }
 
     if (this.editingSession) {
-      const idx = targetWeek.sessions.findIndex(s => s.id === this.editingSession.sessionId);
-      if (idx !== -1) targetWeek.sessions[idx] = sessionObj;
-      else targetWeek.sessions.push(sessionObj);
+      const origWeekId = String(this.editingSession.weekId);
+      const origSessionId = String(this.editingSession.sessionId);
+
+      // Jika user memindahkan sesi ke minggu lain di modal
+      if (origWeekId !== String(weekId)) {
+        const origWeek = this.weeksData.find(w => String(w.id) === origWeekId);
+        if (origWeek) {
+          origWeek.sessions = origWeek.sessions.filter(s => String(s.id) !== origSessionId);
+        }
+      }
+
+      const idx = targetWeek.sessions.findIndex(s => String(s.id) === origSessionId);
+      if (idx !== -1) {
+        targetWeek.sessions[idx] = sessionObj;
+      } else {
+        targetWeek.sessions.push(sessionObj);
+      }
     } else {
       targetWeek.sessions.push(sessionObj);
     }
@@ -1393,12 +1773,13 @@ class RunningTrackerApp {
     this.renderTrainingContent();
     this.initCharts();
     this.showToast('Sesi lari berhasil disimpan!');
+    return false;
   }
 
   editSession(weekId, sessionId) {
-    const week = this.weeksData.find(w => w.id === weekId);
+    const week = this.weeksData.find(w => String(w.id) === String(weekId));
     if (!week) return;
-    const session = week.sessions.find(s => s.id === sessionId);
+    const session = week.sessions.find(s => String(s.id) === String(sessionId));
     if (!session) return;
 
     this.editingSession = { weekId, sessionId };
@@ -1413,14 +1794,34 @@ class RunningTrackerApp {
     document.getElementById('field-location').value = session.location || 'Outdoor';
     document.getElementById('field-notes').value = session.notes || '';
 
+    // Tampilkan preview waktu
+    if (session.time) {
+      const parsed = this.parseAndFormatRunningTime(session.time);
+      const badgeEl = document.getElementById('time-preview-badge');
+      if (badgeEl && parsed.preview) {
+        badgeEl.textContent = `⏱️ ${parsed.preview}`;
+        badgeEl.classList.remove('hidden');
+      }
+    }
+
     this.handleWorkoutTypeChange();
 
     const intervalTbody = document.getElementById('interval-sets-table-body');
     intervalTbody.innerHTML = '';
     if (session.type === 'interval_run' && session.sets) {
       session.sets.forEach(st => {
-        this.addIntervalSetRow(st.setNumber, st.target, st.pace, st.hr);
+        this.addIntervalSetRow(st.setNumber, st.target, st.time || '', st.pace, st.hr);
       });
+      if (session.warmup) {
+        document.getElementById('field-interval-wu-dist').value = session.warmup.distance || 1.5;
+        document.getElementById('field-interval-wu-pace').value = session.warmup.pace || "8'17\"";
+        document.getElementById('field-interval-wu-hr').value = session.warmup.hr || 151;
+      }
+      if (session.cooldown) {
+        document.getElementById('field-interval-cd-dist').value = session.cooldown.distance || 1.64;
+        document.getElementById('field-interval-cd-pace').value = session.cooldown.pace || "9'08\"";
+        document.getElementById('field-interval-cd-hr').value = session.cooldown.hr || 165;
+      }
     }
 
     const tempoTbody = document.getElementById('tempo-segments-table-body');

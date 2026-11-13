@@ -195,6 +195,15 @@ body {
 .excel-cell-interval { background: rgba(244, 63, 94, 0.08); }
 .excel-cell-long { background: rgba(59, 130, 246, 0.08); }
 
+/* Hide scrollbar for tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Modal Backdrop */
 .modal-backdrop {
   background-color: rgba(0, 0, 0, 0.8);

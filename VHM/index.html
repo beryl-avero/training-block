@@ -60,6 +60,11 @@
 
     <!-- Header Actions -->
     <div class="flex items-center gap-2">
+      <button onclick="window.app.openSyncModal()" class="px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 border border-slate-700 flex items-center gap-1.5 transition-all" title="Sinkronkan Data HP ⇄ Laptop">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-400"></i>
+        <span class="hidden sm:inline">Sinkron HP/Laptop</span>
+      </button>
+
       <button onclick="window.app.openAddSessionModal()" class="px-3 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-xs font-bold text-white flex items-center gap-1.5 shadow-lg shadow-indigo-600/30">
         <i data-lucide="plus-circle" class="w-4 h-4"></i>
         <span>Catat Lari</span>
@@ -75,10 +80,14 @@
         <button class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center">
           <i data-lucide="more-vertical" class="w-4 h-4"></i>
         </button>
-        <div class="absolute right-0 mt-2 w-52 py-2 glass-panel rounded-2xl shadow-2xl border border-slate-700 hidden group-hover:block transition-all z-50">
+        <div class="absolute right-0 mt-2 w-56 py-2 glass-panel rounded-2xl shadow-2xl border border-slate-700 hidden group-hover:block transition-all z-50">
+          <button onclick="window.app.openSyncModal()" class="w-full text-left px-4 py-2 text-xs text-indigo-300 hover:bg-slate-800 flex items-center gap-2 font-medium">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-400"></i>
+            Sinkronkan HP &amp; Laptop
+          </button>
           <button onclick="window.app.openEventModal()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
             <i data-lucide="flag" class="w-3.5 h-3.5 text-rose-400"></i>
-            Atur Event Race & Countdown
+            Atur Event Race &amp; Countdown
           </button>
           <button onclick="window.app.exportToCSV()" class="w-full text-left px-4 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2">
             <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>
@@ -464,10 +473,10 @@
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1">Jenis Lari</label>
             <select id="field-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
-              <option value="easy_run">Easy Run (Pondasi Aerobik Z2)</option>
-              <option value="tempo_run">Tempo Run (Threshold Laktat Z4)</option>
-              <option value="interval_run">Interval Run (Speedwork 400m-1k Z5)</option>
-              <option value="long_run">Long Run (Ketahanan Jauh Menuju 21K)</option>
+              <option value="easy_run">Easy Run</option>
+              <option value="tempo_run">Tempo Run</option>
+              <option value="interval_run">Interval Run</option>
+              <option value="long_run">Long Run</option>
             </select>
           </div>
         </div>
@@ -488,22 +497,28 @@
         </div>
 
         <!-- Metrics Row: Distance, Time, Pace, HR -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-          <div>
-            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Jarak (km)</label>
-            <input type="number" step="0.01" id="field-distance" required placeholder="misal: 6.24" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-white focus:outline-none focus:border-indigo-500">
+        <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            <div>
+              <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Jarak (km)</label>
+              <input type="text" inputmode="decimal" id="field-distance" required placeholder="misal: 6.24 atau 6,24" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Waktu</label>
+              <input type="text" id="field-time" required placeholder="45:00 / 1:40 / 30" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Rerata Pace</label>
+              <input type="text" id="field-pace" placeholder="7'13&quot;" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-emerald-400 font-bold focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Heart Rate</label>
+              <input type="number" id="field-hr" placeholder="156" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-rose-400 font-bold focus:outline-none focus:border-indigo-500">
+            </div>
           </div>
-          <div>
-            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Waktu</label>
-            <input type="text" id="field-time" required placeholder="45:00" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-white focus:outline-none focus:border-indigo-500">
-          </div>
-          <div>
-            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Rerata Pace</label>
-            <input type="text" id="field-pace" placeholder="7'13&quot;" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-emerald-400 font-bold focus:outline-none focus:border-indigo-500">
-          </div>
-          <div>
-            <label class="block text-[10px] sm:text-[11px] font-semibold text-slate-400 mb-1">Heart Rate</label>
-            <input type="number" id="field-hr" placeholder="156" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-mono-numbers text-rose-400 font-bold focus:outline-none focus:border-indigo-500">
+          <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800">
+            <span class="text-indigo-300 text-[10px] sm:text-[11px]">💡 Isi 2 dari 3 (Jarak, Waktu, Pace), maka otomatis dihitung.</span>
+            <span id="time-preview-badge" class="text-emerald-400 font-mono-numbers text-[11px] font-semibold hidden"></span>
           </div>
         </div>
 
@@ -519,12 +534,34 @@
             </button>
           </div>
 
+          <!-- Interval Mode Selector: Distance vs Time -->
+          <div class="p-2 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+              <span>Mode:</span>
+              <div class="inline-flex rounded-lg p-0.5 bg-slate-900 border border-slate-700 text-[11px]">
+                <button type="button" id="btn-interval-mode-dist" onclick="window.app.setIntervalMode('distance')" class="px-2.5 py-1 rounded-md font-semibold transition-all bg-indigo-600 text-white">
+                  Jarak (400m)
+                </button>
+                <button type="button" id="btn-interval-mode-time" onclick="window.app.setIntervalMode('time')" class="px-2.5 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white">
+                  Waktu (Durasi)
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 text-xs">
+              <span class="text-slate-400 text-[11px]" id="label-interval-master">Nilai Repetisi:</span>
+              <input type="text" id="field-interval-master-val" value="400m" class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-center font-mono-numbers text-rose-300 font-bold">
+              <button type="button" onclick="window.app.applyMasterIntervalValue()" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-[11px] text-slate-200 border border-slate-600 font-medium">
+                Terapkan ke Semua
+              </button>
+            </div>
+          </div>
+
           <!-- Warmup & Cooldown inputs -->
           <div class="grid grid-cols-2 gap-2 text-xs">
             <div class="p-2 rounded bg-slate-800/80 border border-slate-700">
               <div class="font-semibold text-slate-300 mb-1 text-[11px]">Warm Up</div>
               <div class="grid grid-cols-3 gap-1">
-                <input type="number" step="0.1" id="field-interval-wu-dist" placeholder="Jarak" value="1.5" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+                <input type="text" inputmode="decimal" id="field-interval-wu-dist" placeholder="Jarak" value="1.5" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
                 <input type="text" id="field-interval-wu-pace" placeholder="Pace" value="8'17&quot;" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
                 <input type="number" id="field-interval-wu-hr" placeholder="HR" value="151" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
               </div>
@@ -532,20 +569,21 @@
             <div class="p-2 rounded bg-slate-800/80 border border-slate-700">
               <div class="font-semibold text-slate-300 mb-1 text-[11px]">Cool Down</div>
               <div class="grid grid-cols-3 gap-1">
-                <input type="number" step="0.1" id="field-interval-cd-dist" placeholder="Jarak" value="1.64" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+                <input type="text" inputmode="decimal" id="field-interval-cd-dist" placeholder="Jarak" value="1.64" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
                 <input type="text" id="field-interval-cd-pace" placeholder="Pace" value="9'08&quot;" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
                 <input type="number" id="field-interval-cd-hr" placeholder="HR" value="165" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
               </div>
             </div>
           </div>
 
-          <!-- Sets Table -->
+          <!-- Sets Table with Waktu Column -->
           <div class="overflow-x-auto">
             <table class="w-full text-left">
               <thead>
                 <tr class="text-[10px] text-slate-400 uppercase border-b border-slate-800">
                   <th class="py-1 px-1.5">Set</th>
-                  <th class="py-1 px-1.5">Target</th>
+                  <th class="py-1 px-1.5" id="th-interval-target">Target</th>
+                  <th class="py-1 px-1.5">Waktu</th>
                   <th class="py-1 px-1.5">Pace</th>
                   <th class="py-1 px-1.5">HR</th>
                   <th class="py-1 px-1.5 text-center">Aksi</th>
@@ -705,6 +743,63 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SINKRONISASI DATA HP & LAPTOP -->
+  <div id="modal-sync" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden overflow-y-auto">
+    <div class="glass-panel w-full max-w-lg rounded-2xl p-5 sm:p-6 border border-slate-700 shadow-2xl my-auto relative">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-base font-bold text-white">Sinkron Data HP ⇄ Laptop</h3>
+        </div>
+        <button onclick="window.app.closeSyncModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300">
+        <p class="text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+          ℹ️ <strong>Kenapa data di HP &amp; Laptop belum otomatis sama?</strong><br>
+          Data tersimpan di penyimpanan browser lokal masing-masing perangkat. Gunakan fitur di bawah ini untuk memindahkan data latihan Anda dalam hitungan detik!
+        </p>
+
+        <!-- Cara 1: Salin Kode Data -->
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-indigo-500/30 space-y-2.5">
+          <div class="font-bold text-indigo-300 flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i data-lucide="copy" class="w-3.5 h-3.5"></i> 1. Salin dari HP / Laptop ini</span>
+            <span class="text-[10px] text-slate-400 font-normal">Paling Praktis</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Klik tombol ini, lalu kirimkan teks kodenya ke WhatsApp / Catatan Anda.</p>
+          <button type="button" onclick="window.app.copySyncCode()" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all">
+            <i data-lucide="clipboard-copy" class="w-4 h-4"></i>
+            Salin Kode Data Latihan
+          </button>
+        </div>
+
+        <!-- Cara 2: Tempel Kode di Perangkat Lain -->
+        <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-2.5">
+          <div class="font-bold text-emerald-400 flex items-center gap-1.5">
+            <i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i>
+            2. Tempel di Perangkat Tujuan (Laptop / HP)
+          </div>
+          <p class="text-[11px] text-slate-400">Tempel kode yang tadi Anda salin ke kotak berikut, lalu klik Terapkan.</p>
+          <textarea id="sync-input-code" rows="3" placeholder="Tempel kode data di sini..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-emerald-500"></textarea>
+          <button type="button" onclick="window.app.applySyncCode()" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            Terapkan Sinkronisasi Sekarang
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-3 mt-4 border-t border-slate-800 flex justify-end">
+        <button type="button" onclick="window.app.closeSyncModal()" class="px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+          Tutup
+        </button>
+      </div>
     </div>
   </div>
 
