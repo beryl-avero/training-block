@@ -49,7 +49,9 @@ class RunningTrackerApp {
 
   saveData(skipCloud = false) {
     try {
+      const now = Date.now();
       localStorage.setItem(this.storageKey, JSON.stringify(this.weeksData));
+      localStorage.setItem('vhm_last_updated', now.toString());
       this.showToast('Data latihan tersimpan!');
       if (!skipCloud) {
         this.saveToCloud();
@@ -74,7 +76,9 @@ class RunningTrackerApp {
 
   saveEventData(skipCloud = false) {
     try {
+      const now = Date.now();
       localStorage.setItem(this.eventStorageKey, JSON.stringify(this.raceEvent));
+      localStorage.setItem('vhm_last_updated', now.toString());
       this.showToast('Event lomba diperbarui!');
       if (!skipCloud) {
         this.saveToCloud();
@@ -769,6 +773,22 @@ class RunningTrackerApp {
             <span>${s.setsTitle || 'Interval Sets'}</span>
             <span class="text-[10px] font-normal text-slate-400">${s.sets.length} repetisi</span>
           </div>
+          ${(s.warmup && (parseFloat(s.warmup.distance) > 0 || s.warmup.time)) || (s.cooldown && (parseFloat(s.cooldown.distance) > 0 || s.cooldown.time)) ? `
+            <div class="grid grid-cols-2 gap-1.5 mb-1.5 text-[10px]">
+              ${s.warmup && (parseFloat(s.warmup.distance) > 0 || s.warmup.time) ? `
+                <div class="p-1 px-1.5 rounded bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                  <span class="text-emerald-400 font-semibold">WU: ${s.warmup.distance ? s.warmup.distance + 'k' : ''}</span>
+                  <span class="text-slate-300 font-mono-numbers">${s.warmup.time || ''} ${s.warmup.pace ? '@ ' + s.warmup.pace : ''}</span>
+                </div>
+              ` : '<div></div>'}
+              ${s.cooldown && (parseFloat(s.cooldown.distance) > 0 || s.cooldown.time) ? `
+                <div class="p-1 px-1.5 rounded bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                  <span class="text-blue-400 font-semibold">CD: ${s.cooldown.distance ? s.cooldown.distance + 'k' : ''}</span>
+                  <span class="text-slate-300 font-mono-numbers">${s.cooldown.time || ''} ${s.cooldown.pace ? '@ ' + s.cooldown.pace : ''}</span>
+                </div>
+              ` : '<div></div>'}
+            </div>
+          ` : ''}
           <div class="rounded-lg bg-slate-900/80 border border-slate-800 overflow-hidden text-[11px]">
             <!-- Header Kolom Keterangan -->
             <div class="grid grid-cols-12 gap-1 px-2.5 py-1 bg-slate-800/90 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
@@ -1271,7 +1291,7 @@ class RunningTrackerApp {
     return `${pad(minutes)}:${pad(seconds)}`;
   }
 
-  // Auto-calculate: Isi 2 dari 3 (Jarak, Waktu, Pace), otomatis mengisi yang lainnya
+  // Auto-calculate: Isi 2 dari 3 (Jarak, Waktu, Pace), otomatis mengisi yang lainnya (Semua Jenis Lari)
   autoCalculateMetrics(trigger = 'distance') {
     const distEl = document.getElementById('field-distance');
     const timeEl = document.getElementById('field-time');
@@ -1282,7 +1302,16 @@ class RunningTrackerApp {
 
     // Otomatis ganti koma jadi titik saat user mengetik jarak
     if (distEl.value.includes(',')) {
-      distEl.value = distEl.value.replace(',', '.');
+      distEl.value = distEl.value.replace(/,/g, '.');
+    }
+
+    // Catat riwayat edit field agar saat 3 field terisi, field yang diedit paling lama yang dihitung ulang
+    if (!this.metricEditHistory) {
+      this.metricEditHistory = ['distance', 'time'];
+    }
+    if (this.metricEditHistory[this.metricEditHistory.length - 1] !== trigger) {
+      this.metricEditHistory.push(trigger);
+      if (this.metricEditHistory.length > 5) this.metricEditHistory.shift();
     }
 
     const distance = parseFloat(distEl.value.trim());
@@ -1294,45 +1323,43 @@ class RunningTrackerApp {
     const paceSec = this.paceToSeconds(paceEl.value.trim());
     const hasPace = paceSec !== null && paceSec > 0;
 
-    // Tampilkan pratinjau waktu (misal: 40m atau 1j 40m)
-    if (badgeEl) {
-      if (hasTime && parsedTime.preview) {
-        badgeEl.textContent = `⏱️ ${parsedTime.preview}`;
-        badgeEl.classList.remove('hidden');
-      } else {
-        badgeEl.classList.add('hidden');
+    // Skenario 1: Hanya 2 field terisi, 1 field kosong
+    if (hasDist && hasTime && !hasPace) {
+      const pSec = Math.round(parsedTime.totalSeconds / distance);
+      paceEl.value = this.secondsToPace(pSec);
+    } else if (hasDist && hasPace && !hasTime) {
+      const totalSec = Math.round(distance * paceSec);
+      timeEl.value = this.secondsToTimeString(totalSec);
+    } else if (hasTime && hasPace && !hasDist) {
+      const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
+      distEl.value = calcDist;
+    } else if (hasDist && hasTime && hasPace) {
+      // Skenario 2: Ketiga field sudah terisi (user sedang mengubah salah satunya)
+      const prev = this.metricEditHistory.filter(h => h !== trigger).pop() || (trigger === 'distance' ? 'time' : 'distance');
+
+      if ((trigger === 'distance' && prev === 'time') || (trigger === 'time' && prev === 'distance')) {
+        // Jarak & Waktu aktif -> hitung ulang Pace
+        const pSec = Math.round(parsedTime.totalSeconds / distance);
+        paceEl.value = this.secondsToPace(pSec);
+      } else if ((trigger === 'distance' && prev === 'pace') || (trigger === 'pace' && prev === 'distance')) {
+        // Jarak & Pace aktif -> hitung ulang Waktu
+        const totalSec = Math.round(distance * paceSec);
+        timeEl.value = this.secondsToTimeString(totalSec);
+      } else if ((trigger === 'time' && prev === 'pace') || (trigger === 'pace' && prev === 'time')) {
+        // Waktu & Pace aktif -> hitung ulang Jarak
+        const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
+        distEl.value = calcDist;
       }
     }
 
-    if (trigger === 'distance') {
-      if (hasDist && hasTime) {
-        // Jarak & Waktu ada -> Otomatis hitung Pace
-        const pSec = Math.round(parsedTime.totalSeconds / distance);
-        paceEl.value = this.secondsToPace(pSec);
-      } else if (hasDist && hasPace) {
-        // Jarak & Pace ada -> Otomatis hitung Waktu
-        const totalSec = Math.round(distance * paceSec);
-        timeEl.value = this.secondsToTimeString(totalSec);
-      }
-    } else if (trigger === 'time') {
-      if (hasTime && hasDist) {
-        // Waktu & Jarak ada -> Otomatis hitung Pace
-        const pSec = Math.round(parsedTime.totalSeconds / distance);
-        paceEl.value = this.secondsToPace(pSec);
-      } else if (hasTime && hasPace) {
-        // Waktu & Pace ada -> Otomatis hitung Jarak
-        const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
-        distEl.value = calcDist;
-      }
-    } else if (trigger === 'pace') {
-      if (hasPace && hasDist) {
-        // Pace & Jarak ada -> Otomatis hitung Waktu
-        const totalSec = Math.round(distance * paceSec);
-        timeEl.value = this.secondsToTimeString(totalSec);
-      } else if (hasPace && hasTime) {
-        // Pace & Waktu ada -> Otomatis hitung Jarak
-        const calcDist = (parsedTime.totalSeconds / paceSec).toFixed(2);
-        distEl.value = calcDist;
+    // Tampilkan pratinjau waktu (misal: 40m atau 1j 40m)
+    const updatedParsedTime = this.parseAndFormatRunningTime(timeEl.value.trim(), false);
+    if (badgeEl) {
+      if (updatedParsedTime.totalSeconds > 0 && updatedParsedTime.preview) {
+        badgeEl.textContent = `⏱️ ${updatedParsedTime.preview}`;
+        badgeEl.classList.remove('hidden');
+      } else {
+        badgeEl.classList.add('hidden');
       }
     }
   }
@@ -1424,7 +1451,8 @@ class RunningTrackerApp {
     try {
       const saved = localStorage.getItem(this.supabaseConfigKey);
       if (saved) {
-        const { url, key } = JSON.parse(saved);
+        let { url, key } = JSON.parse(saved);
+        url = (url || '').replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
         if (url && key && window.supabase && window.supabase.createClient) {
           this.supabase = window.supabase.createClient(url, key);
           this.updateCloudUIStatus(true);
@@ -1493,8 +1521,12 @@ class RunningTrackerApp {
     const keyInput = document.getElementById('field-supabase-key');
 
     if (!urlInput || !keyInput) return;
-    const url = urlInput.value.trim();
+    let url = urlInput.value.trim();
     const key = keyInput.value.trim();
+
+    // Otomatis hapus /rest/v1 dan garis miring di ujung jika user menyalin dari halaman Data API
+    url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+    urlInput.value = url;
 
     if (!url || !key) {
       this.showToast('Harap isi Project URL dan Anon Key Supabase!', 'error');
@@ -1573,9 +1605,10 @@ class RunningTrackerApp {
   async saveToCloud() {
     if (!this.supabase) return;
     try {
+      const now = Date.now();
       const bundle = {
         vhmVersion: 1,
-        timestamp: Date.now(),
+        timestamp: now,
         weeksData: this.weeksData,
         raceEvent: this.raceEvent
       };
@@ -1585,12 +1618,13 @@ class RunningTrackerApp {
         .upsert({
           id: 'primary_training_data',
           data: bundle,
-          updated_at: new Date().toISOString()
+          updated_at: new Date(now).toISOString()
         }, { onConflict: 'id' });
 
       if (error) {
         console.warn('Gagal simpan ke cloud:', error.message);
       } else {
+        localStorage.setItem('vhm_last_cloud_synced', now.toString());
         console.log('⚡ Data otomatis tersimpan ke cloud Supabase');
       }
     } catch (e) {
@@ -1610,8 +1644,21 @@ class RunningTrackerApp {
       if (error) throw error;
 
       if (data && data.data && data.data.weeksData && Array.isArray(data.data.weeksData)) {
-        this.weeksData = data.data.weeksData;
-        if (data.data.raceEvent) this.raceEvent = data.data.raceEvent;
+        const cloudBundle = data.data;
+        const cloudTimestamp = cloudBundle.timestamp || 0;
+        const localTimestamp = parseInt(localStorage.getItem('vhm_last_updated') || '0', 10);
+
+        // Jika data lokal lebih baru daripada cloud (misal baru disimpan lalu refresh halaman),
+        // JANGAN menimpa data lokal dengan data cloud yang lama! Sebaliknya, upload data lokal ke cloud.
+        if (localTimestamp > cloudTimestamp) {
+          console.log('Data lokal lebih baru dibanding cloud. Mengunggah data lokal ke cloud...');
+          await this.saveToCloud();
+          return;
+        }
+
+        // Terapkan data cloud ke lokal jika cloud sama atau lebih baru
+        this.weeksData = cloudBundle.weeksData;
+        if (cloudBundle.raceEvent) this.raceEvent = cloudBundle.raceEvent;
         this.saveData(true);
         this.renderSummaryStats();
         this.renderCalendar();
@@ -1641,6 +1688,11 @@ class RunningTrackerApp {
             if (payload && payload.new && payload.new.data) {
               const cloudBundle = payload.new.data;
               if (cloudBundle.weeksData && Array.isArray(cloudBundle.weeksData)) {
+                const cloudTimestamp = cloudBundle.timestamp || 0;
+                const localTimestamp = parseInt(localStorage.getItem('vhm_last_updated') || '0', 10);
+                if (localTimestamp > cloudTimestamp) {
+                  return; // Abaikan jika lokal lebih baru
+                }
                 this.weeksData = cloudBundle.weeksData;
                 if (cloudBundle.raceEvent) this.raceEvent = cloudBundle.raceEvent;
                 this.saveData(true);
@@ -1796,25 +1848,33 @@ create policy "Public Access" on vhm_data
       });
     });
 
-    // Auto-calculate metric listeners (Jarak, Waktu, Pace)
+    // Auto-calculate metric listeners (Jarak, Waktu, Pace) - Terapkan ke semua tipe lari
     const distInput = document.getElementById('field-distance');
     const timeInput = document.getElementById('field-time');
     const paceInput = document.getElementById('field-pace');
 
     if (distInput) {
-      distInput.addEventListener('input', (e) => {
-        if (e.target.value.includes(',')) {
-          e.target.value = e.target.value.replace(',', '.');
+      const handleDist = () => {
+        this.userManuallyEditedMain = true;
+        if (distInput.value.includes(',')) {
+          distInput.value = distInput.value.replace(/,/g, '.');
         }
         this.autoCalculateMetrics('distance');
-      });
+      };
+      distInput.addEventListener('input', handleDist);
+      distInput.addEventListener('change', handleDist);
+      distInput.addEventListener('blur', handleDist);
     }
 
     if (timeInput) {
-      timeInput.addEventListener('input', () => {
+      const handleTime = () => {
+        this.userManuallyEditedMain = true;
         this.autoCalculateMetrics('time');
-      });
+      };
+      timeInput.addEventListener('input', handleTime);
+      timeInput.addEventListener('change', handleTime);
       timeInput.addEventListener('blur', () => {
+        this.userManuallyEditedMain = true;
         if (timeInput.value.trim()) {
           const parsed = this.parseAndFormatRunningTime(timeInput.value);
           if (parsed.formatted) {
@@ -1826,7 +1886,20 @@ create policy "Public Access" on vhm_data
     }
 
     if (paceInput) {
-      paceInput.addEventListener('input', () => {
+      const handlePace = () => {
+        this.userManuallyEditedMain = true;
+        this.autoCalculateMetrics('pace');
+      };
+      paceInput.addEventListener('input', handlePace);
+      paceInput.addEventListener('change', handlePace);
+      paceInput.addEventListener('blur', () => {
+        this.userManuallyEditedMain = true;
+        if (paceInput.value.trim()) {
+          const pSec = this.paceToSeconds(paceInput.value);
+          if (pSec) {
+            paceInput.value = this.secondsToPace(pSec);
+          }
+        }
         this.autoCalculateMetrics('pace');
       });
     }
@@ -1843,6 +1916,38 @@ create policy "Public Access" on vhm_data
 
     const btnAddSegment = document.getElementById('btn-add-tempo-segment');
     if (btnAddSegment) btnAddSegment.addEventListener('click', () => this.addTempoSegmentRow());
+
+    // Listener auto-calculate Warm Up & Cool Down Interval
+    this.setupIntervalWarmupCooldownListeners();
+
+    // Global listener: Otomatis ubah koma (,) menjadi titik (.) di semua input angka/jarak/pace
+    document.addEventListener('input', (e) => {
+      if (!e.target || !e.target.tagName || e.target.tagName !== 'INPUT') return;
+      const t = e.target;
+      if (
+        t.getAttribute('inputmode') === 'decimal' ||
+        t.id?.includes('dist') ||
+        t.id?.includes('pace') ||
+        t.classList?.contains('seg-dist') ||
+        t.classList?.contains('seg-pace') ||
+        t.classList?.contains('set-target') ||
+        t.classList?.contains('set-pace') ||
+        t.id === 'field-distance' ||
+        t.id === 'field-pace' ||
+        t.id === 'field-interval-wu-dist' ||
+        t.id === 'field-interval-wu-pace' ||
+        t.id === 'field-interval-cd-dist' ||
+        t.id === 'field-interval-cd-pace'
+      ) {
+        if (t.value.includes(',')) {
+          const start = t.selectionStart;
+          t.value = t.value.replace(/,/g, '.');
+          if (start !== null) {
+            t.setSelectionRange(start, start);
+          }
+        }
+      }
+    }, true);
 
     // Event form listener
     const formEvent = document.getElementById('form-event');
@@ -1869,6 +1974,8 @@ create policy "Public Access" on vhm_data
   // ================= MODAL OPERATIONS =================
   openAddSessionModal() {
     this.editingSession = null;
+    this.userManuallyEditedMain = false;
+    this.metricEditHistory = ['distance', 'time'];
     document.getElementById('modal-session-title').textContent = 'Catat Sesi Lari Baru';
     document.getElementById('form-session').reset();
 
@@ -1892,6 +1999,13 @@ create policy "Public Access" on vhm_data
     this.addTempoSegmentRow('Warm Up', '', '', '', '');
     this.addTempoSegmentRow('Tempo Core', '', '', '', '');
     this.addTempoSegmentRow('Cool Down', '', '', '', '');
+
+    // Kosongkan Warm Up & Cool Down Interval
+    ['field-interval-wu-dist', 'field-interval-wu-time', 'field-interval-wu-pace', 'field-interval-wu-hr',
+     'field-interval-cd-dist', 'field-interval-cd-time', 'field-interval-cd-pace', 'field-interval-cd-hr'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
 
     this.handleWorkoutTypeChange();
     this.updateWeekSelectorInModal();
@@ -2006,7 +2120,10 @@ create policy "Public Access" on vhm_data
     };
 
     if (targetInput) {
-      targetInput.addEventListener('input', () => handleCalc('target'));
+      targetInput.addEventListener('input', () => {
+        if (targetInput.value.includes(',')) targetInput.value = targetInput.value.replace(/,/g, '.');
+        handleCalc('target');
+      });
       targetInput.addEventListener('change', () => handleCalc('target'));
     }
     if (timeInput) {
@@ -2026,17 +2143,93 @@ create policy "Public Access" on vhm_data
     }
   }
 
-  updateIntervalTotalsToMain() {
+  setupIntervalWarmupCooldownListeners() {
+    // Warm Up Interval
+    const wuDist = document.getElementById('field-interval-wu-dist');
+    const wuTime = document.getElementById('field-interval-wu-time');
+    const wuPace = document.getElementById('field-interval-wu-pace');
+
+    const runWuCalc = (trigger) => {
+      this.autoCalculateSegmentRow(wuDist, wuTime, wuPace, trigger);
+      this.updateIntervalTotalsToMain();
+    };
+
+    if (wuDist) {
+      wuDist.addEventListener('input', (e) => {
+        if (e.target.value.includes(',')) e.target.value = e.target.value.replace(/,/g, '.');
+        runWuCalc('distance');
+      });
+      wuDist.addEventListener('change', () => runWuCalc('distance'));
+    }
+    if (wuTime) {
+      wuTime.addEventListener('input', () => runWuCalc('time'));
+      wuTime.addEventListener('change', () => runWuCalc('time'));
+      wuTime.addEventListener('blur', () => {
+        if (wuTime.value.trim()) {
+          const parsed = this.parseAndFormatRunningTime(wuTime.value, true);
+          if (parsed.formatted) wuTime.value = parsed.formatted;
+        }
+        runWuCalc('time');
+      });
+    }
+    if (wuPace) {
+      wuPace.addEventListener('input', () => runWuCalc('pace'));
+      wuPace.addEventListener('change', () => runWuCalc('pace'));
+    }
+
+    // Cool Down Interval
+    const cdDist = document.getElementById('field-interval-cd-dist');
+    const cdTime = document.getElementById('field-interval-cd-time');
+    const cdPace = document.getElementById('field-interval-cd-pace');
+
+    const runCdCalc = (trigger) => {
+      this.autoCalculateSegmentRow(cdDist, cdTime, cdPace, trigger);
+      this.updateIntervalTotalsToMain();
+    };
+
+    if (cdDist) {
+      cdDist.addEventListener('input', (e) => {
+        if (e.target.value.includes(',')) e.target.value = e.target.value.replace(/,/g, '.');
+        runCdCalc('distance');
+      });
+      cdDist.addEventListener('change', () => runCdCalc('distance'));
+    }
+    if (cdTime) {
+      cdTime.addEventListener('input', () => runCdCalc('time'));
+      cdTime.addEventListener('change', () => runCdCalc('time'));
+      cdTime.addEventListener('blur', () => {
+        if (cdTime.value.trim()) {
+          const parsed = this.parseAndFormatRunningTime(cdTime.value, true);
+          if (parsed.formatted) cdTime.value = parsed.formatted;
+        }
+        runCdCalc('time');
+      });
+    }
+    if (cdPace) {
+      cdPace.addEventListener('input', () => runCdCalc('pace'));
+      cdPace.addEventListener('change', () => runCdCalc('pace'));
+    }
+  }
+
+  updateIntervalTotalsToMain(force = false) {
     const typeSelect = document.getElementById('field-type');
     if (!typeSelect || typeSelect.value !== 'interval_run') return;
+    // Jangan menimpa jika user secara manual telah mengisi Jarak / Waktu / Pace utama
+    if (this.userManuallyEditedMain && !force) return;
 
     let totalDist = 0;
     let totalSec = 0;
 
-    const wuDist = parseFloat((document.getElementById('field-interval-wu-dist').value || '').replace(',', '.')) || 0;
-    const wuPace = this.paceToSeconds(document.getElementById('field-interval-wu-pace').value);
+    const wuDist = parseFloat((document.getElementById('field-interval-wu-dist')?.value || '').replace(',', '.')) || 0;
+    const wuTimeStr = (document.getElementById('field-interval-wu-time')?.value || '').trim();
+    const wuParsed = this.parseAndFormatRunningTime(wuTimeStr, true);
+    const wuPace = this.paceToSeconds(document.getElementById('field-interval-wu-pace')?.value);
     totalDist += wuDist;
-    if (wuDist > 0 && wuPace > 0) totalSec += wuDist * wuPace;
+    if (wuParsed.totalSeconds > 0) {
+      totalSec += wuParsed.totalSeconds;
+    } else if (wuDist > 0 && wuPace > 0) {
+      totalSec += wuDist * wuPace;
+    }
 
     const rows = document.querySelectorAll('#interval-sets-table-body tr');
     rows.forEach(r => {
@@ -2055,10 +2248,16 @@ create policy "Public Access" on vhm_data
       }
     });
 
-    const cdDist = parseFloat((document.getElementById('field-interval-cd-dist').value || '').replace(',', '.')) || 0;
-    const cdPace = this.paceToSeconds(document.getElementById('field-interval-cd-pace').value);
+    const cdDist = parseFloat((document.getElementById('field-interval-cd-dist')?.value || '').replace(',', '.')) || 0;
+    const cdTimeStr = (document.getElementById('field-interval-cd-time')?.value || '').trim();
+    const cdParsed = this.parseAndFormatRunningTime(cdTimeStr, true);
+    const cdPace = this.paceToSeconds(document.getElementById('field-interval-cd-pace')?.value);
     totalDist += cdDist;
-    if (cdDist > 0 && cdPace > 0) totalSec += cdDist * cdPace;
+    if (cdParsed.totalSeconds > 0) {
+      totalSec += cdParsed.totalSeconds;
+    } else if (cdDist > 0 && cdPace > 0) {
+      totalSec += cdDist * cdPace;
+    }
 
     if (totalDist > 0) {
       document.getElementById('field-distance').value = totalDist.toFixed(2).replace(/\.00$/, '');
@@ -2180,9 +2379,11 @@ create policy "Public Access" on vhm_data
     }
   }
 
-  updateTempoTotalsToMain() {
+  updateTempoTotalsToMain(force = false) {
     const typeSelect = document.getElementById('field-type');
     if (!typeSelect || typeSelect.value !== 'tempo_run') return;
+    // Jangan menimpa jika user secara manual telah mengisi Jarak / Waktu / Pace utama
+    if (this.userManuallyEditedMain && !force) return;
 
     let totalDist = 0;
     let totalSec = 0;
@@ -2277,6 +2478,7 @@ create policy "Public Access" on vhm_data
       sessionObj.warmup = {
         name: 'Warm Up',
         distance: wuDist,
+        time: (document.getElementById('field-interval-wu-time')?.value || '').trim(),
         pace: document.getElementById('field-interval-wu-pace').value.trim(),
         hr: parseInt(document.getElementById('field-interval-wu-hr').value, 10) || null
       };
@@ -2285,6 +2487,7 @@ create policy "Public Access" on vhm_data
       sessionObj.cooldown = {
         name: 'Cool Down',
         distance: cdDist,
+        time: (document.getElementById('field-interval-cd-time')?.value || '').trim(),
         pace: document.getElementById('field-interval-cd-pace').value.trim(),
         hr: parseInt(document.getElementById('field-interval-cd-hr').value, 10) || null
       };
@@ -2351,6 +2554,8 @@ create policy "Public Access" on vhm_data
     if (!session) return;
 
     this.editingSession = { weekId, sessionId };
+    this.userManuallyEditedMain = true; // Sesi yang sudah ada mempertahankan nilai utamanya
+    this.metricEditHistory = ['distance', 'time'];
     document.getElementById('modal-session-title').textContent = 'Edit Sesi Lari';
     document.getElementById('field-week-select').value = weekId;
     document.getElementById('field-type').value = session.type;
@@ -2381,14 +2586,40 @@ create policy "Public Access" on vhm_data
         this.addIntervalSetRow(st.setNumber, st.target, st.time || '', st.pace, st.hr);
       });
       if (session.warmup) {
-        document.getElementById('field-interval-wu-dist').value = session.warmup.distance || 1.5;
-        document.getElementById('field-interval-wu-pace').value = session.warmup.pace || "8'17\"";
-        document.getElementById('field-interval-wu-hr').value = session.warmup.hr || 151;
+        document.getElementById('field-interval-wu-dist').value = session.warmup.distance !== undefined ? session.warmup.distance : '';
+        document.getElementById('field-interval-wu-time').value = session.warmup.time || '';
+        document.getElementById('field-interval-wu-pace').value = session.warmup.pace || '';
+        document.getElementById('field-interval-wu-hr').value = session.warmup.hr || '';
+        if (!document.getElementById('field-interval-wu-time').value && session.warmup.distance && session.warmup.pace) {
+          const d = parseFloat(session.warmup.distance);
+          const p = this.paceToSeconds(session.warmup.pace);
+          if (d > 0 && p > 0) {
+            document.getElementById('field-interval-wu-time').value = this.secondsToTimeString(Math.round(d * p));
+          }
+        }
+      } else {
+        document.getElementById('field-interval-wu-dist').value = '';
+        document.getElementById('field-interval-wu-time').value = '';
+        document.getElementById('field-interval-wu-pace').value = '';
+        document.getElementById('field-interval-wu-hr').value = '';
       }
       if (session.cooldown) {
-        document.getElementById('field-interval-cd-dist').value = session.cooldown.distance || 1.64;
-        document.getElementById('field-interval-cd-pace').value = session.cooldown.pace || "9'08\"";
-        document.getElementById('field-interval-cd-hr').value = session.cooldown.hr || 165;
+        document.getElementById('field-interval-cd-dist').value = session.cooldown.distance !== undefined ? session.cooldown.distance : '';
+        document.getElementById('field-interval-cd-time').value = session.cooldown.time || '';
+        document.getElementById('field-interval-cd-pace').value = session.cooldown.pace || '';
+        document.getElementById('field-interval-cd-hr').value = session.cooldown.hr || '';
+        if (!document.getElementById('field-interval-cd-time').value && session.cooldown.distance && session.cooldown.pace) {
+          const d = parseFloat(session.cooldown.distance);
+          const p = this.paceToSeconds(session.cooldown.pace);
+          if (d > 0 && p > 0) {
+            document.getElementById('field-interval-cd-time').value = this.secondsToTimeString(Math.round(d * p));
+          }
+        }
+      } else {
+        document.getElementById('field-interval-cd-dist').value = '';
+        document.getElementById('field-interval-cd-time').value = '';
+        document.getElementById('field-interval-cd-pace').value = '';
+        document.getElementById('field-interval-cd-hr').value = '';
       }
     }
 

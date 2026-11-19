@@ -571,21 +571,33 @@
           </div>
 
           <!-- Warmup & Cooldown inputs -->
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="p-2 rounded bg-slate-800/80 border border-slate-700">
-              <div class="font-semibold text-slate-300 mb-1 text-[11px]">Warm Up</div>
-              <div class="grid grid-cols-3 gap-1">
-                <input type="text" inputmode="decimal" id="field-interval-wu-dist" placeholder="Jarak" value="1.5" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
-                <input type="text" id="field-interval-wu-pace" placeholder="Pace" value="8'17&quot;" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
-                <input type="number" id="field-interval-wu-hr" placeholder="HR" value="151" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-emerald-400 text-[11px] flex items-center gap-1">
+                  <i data-lucide="flame" class="w-3.5 h-3.5"></i> Warm Up
+                </span>
+                <span class="text-[10px] text-slate-400">Jarak • Waktu • Pace • HR</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1">
+                <input type="text" inputmode="decimal" id="field-interval-wu-dist" placeholder="Jarak (km)" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white font-mono-numbers text-center focus:outline-none focus:border-emerald-500">
+                <input type="text" id="field-interval-wu-time" placeholder="Waktu" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-amber-300 font-mono-numbers text-center focus:outline-none focus:border-amber-500">
+                <input type="text" id="field-interval-wu-pace" placeholder="Pace" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-emerald-400 font-mono-numbers text-center focus:outline-none focus:border-emerald-500">
+                <input type="number" id="field-interval-wu-hr" placeholder="HR" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-rose-400 font-mono-numbers text-center focus:outline-none focus:border-rose-500">
               </div>
             </div>
-            <div class="p-2 rounded bg-slate-800/80 border border-slate-700">
-              <div class="font-semibold text-slate-300 mb-1 text-[11px]">Cool Down</div>
-              <div class="grid grid-cols-3 gap-1">
-                <input type="text" inputmode="decimal" id="field-interval-cd-dist" placeholder="Jarak" value="1.64" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
-                <input type="text" id="field-interval-cd-pace" placeholder="Pace" value="9'08&quot;" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
-                <input type="number" id="field-interval-cd-hr" placeholder="HR" value="165" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white">
+            <div class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-blue-400 text-[11px] flex items-center gap-1">
+                  <i data-lucide="wind" class="w-3.5 h-3.5"></i> Cool Down
+                </span>
+                <span class="text-[10px] text-slate-400">Jarak • Waktu • Pace • HR</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1">
+                <input type="text" inputmode="decimal" id="field-interval-cd-dist" placeholder="Jarak (km)" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-white font-mono-numbers text-center focus:outline-none focus:border-blue-500">
+                <input type="text" id="field-interval-cd-time" placeholder="Waktu" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-amber-300 font-mono-numbers text-center focus:outline-none focus:border-amber-500">
+                <input type="text" id="field-interval-cd-pace" placeholder="Pace" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-emerald-400 font-mono-numbers text-center focus:outline-none focus:border-emerald-500">
+                <input type="number" id="field-interval-cd-hr" placeholder="HR" class="bg-slate-900 border border-slate-700 rounded p-1 text-[11px] text-rose-400 font-mono-numbers text-center focus:outline-none focus:border-rose-500">
               </div>
             </div>
           </div>
