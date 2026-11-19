@@ -2212,63 +2212,10 @@ create policy "Public Access" on vhm_data
   }
 
   updateIntervalTotalsToMain(force = false) {
-    const typeSelect = document.getElementById('field-type');
-    if (!typeSelect || typeSelect.value !== 'interval_run') return;
-    // Jangan menimpa jika user secara manual telah mengisi Jarak / Waktu / Pace utama
-    if (this.userManuallyEditedMain && !force) return;
-
-    let totalDist = 0;
-    let totalSec = 0;
-
-    const wuDist = parseFloat((document.getElementById('field-interval-wu-dist')?.value || '').replace(',', '.')) || 0;
-    const wuTimeStr = (document.getElementById('field-interval-wu-time')?.value || '').trim();
-    const wuParsed = this.parseAndFormatRunningTime(wuTimeStr, true);
-    const wuPace = this.paceToSeconds(document.getElementById('field-interval-wu-pace')?.value);
-    totalDist += wuDist;
-    if (wuParsed.totalSeconds > 0) {
-      totalSec += wuParsed.totalSeconds;
-    } else if (wuDist > 0 && wuPace > 0) {
-      totalSec += wuDist * wuPace;
-    }
-
-    const rows = document.querySelectorAll('#interval-sets-table-body tr');
-    rows.forEach(r => {
-      const targetStr = r.querySelector('.set-target') ? r.querySelector('.set-target').value : '';
-      const dist = this.parseDistanceToKm(targetStr);
-      const timeStr = r.querySelector('.set-time') ? r.querySelector('.set-time').value : '';
-      const parsedTime = this.parseAndFormatRunningTime(timeStr, true);
-
-      totalDist += dist;
-      if (parsedTime.totalSeconds > 0) {
-        totalSec += parsedTime.totalSeconds;
-      } else if (dist > 0) {
-        const paceStr = r.querySelector('.set-pace') ? r.querySelector('.set-pace').value : '';
-        const pSec = this.paceToSeconds(paceStr);
-        if (pSec > 0) totalSec += dist * pSec;
-      }
-    });
-
-    const cdDist = parseFloat((document.getElementById('field-interval-cd-dist')?.value || '').replace(',', '.')) || 0;
-    const cdTimeStr = (document.getElementById('field-interval-cd-time')?.value || '').trim();
-    const cdParsed = this.parseAndFormatRunningTime(cdTimeStr, true);
-    const cdPace = this.paceToSeconds(document.getElementById('field-interval-cd-pace')?.value);
-    totalDist += cdDist;
-    if (cdParsed.totalSeconds > 0) {
-      totalSec += cdParsed.totalSeconds;
-    } else if (cdDist > 0 && cdPace > 0) {
-      totalSec += cdDist * cdPace;
-    }
-
-    if (totalDist > 0) {
-      document.getElementById('field-distance').value = totalDist.toFixed(2).replace(/\.00$/, '');
-    }
-    if (totalSec > 0) {
-      document.getElementById('field-time').value = this.secondsToTimeString(Math.round(totalSec));
-    }
-    if (totalDist > 0 && totalSec > 0) {
-      const avgPace = Math.round(totalSec / totalDist);
-      document.getElementById('field-pace').value = this.secondsToPace(avgPace);
-    }
+    // Sesuai permintaan: hasil breakdown tidak boleh merubah baris utama (Jarak, Waktu, Pace),
+    // karena di sesi interval ada jeda rest (jalan/jogging santai antar set) yang tidak dicatat di tabel.
+    // Baris utama adalah total keseluruhan dari jam tangan / Strava.
+    return;
   }
 
   renumberIntervalSets() {
@@ -2380,33 +2327,9 @@ create policy "Public Access" on vhm_data
   }
 
   updateTempoTotalsToMain(force = false) {
-    const typeSelect = document.getElementById('field-type');
-    if (!typeSelect || typeSelect.value !== 'tempo_run') return;
-    // Jangan menimpa jika user secara manual telah mengisi Jarak / Waktu / Pace utama
-    if (this.userManuallyEditedMain && !force) return;
-
-    let totalDist = 0;
-    let totalSec = 0;
-
-    const rows = document.querySelectorAll('#tempo-segments-table-body tr');
-    rows.forEach(r => {
-      const dist = parseFloat((r.querySelector('.seg-dist').value || '').replace(',', '.')) || 0;
-      const timeStr = (r.querySelector('.seg-time').value || '').trim();
-      const parsed = this.parseAndFormatRunningTime(timeStr, true);
-      totalDist += dist;
-      totalSec += parsed.totalSeconds;
-    });
-
-    if (totalDist > 0) {
-      document.getElementById('field-distance').value = totalDist.toFixed(2).replace(/\.00$/, '');
-    }
-    if (totalSec > 0) {
-      document.getElementById('field-time').value = this.secondsToTimeString(totalSec);
-    }
-    if (totalDist > 0 && totalSec > 0) {
-      const avgPace = Math.round(totalSec / totalDist);
-      document.getElementById('field-pace').value = this.secondsToPace(avgPace);
-    }
+    // Sesuai permintaan: hasil breakdown tidak boleh merubah baris utama (Jarak, Waktu, Pace),
+    // baris utama adalah total keseluruhan dari jam tangan / Strava.
+    return;
   }
 
   handleSaveSession(e) {
