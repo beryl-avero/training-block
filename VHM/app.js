@@ -711,7 +711,6 @@ class RunningTrackerApp {
                 <i data-lucide="${isCollapsed ? 'folder' : 'folder-open'}" class="w-3.5 h-3.5 text-indigo-400"></i>
                 ${week.title}
               </span>
-              <span class="text-xs text-slate-400 hidden sm:inline">${week.notes || ''}</span>
               ${isCollapsed ? `
                 <span class="text-[11px] text-amber-400/90 font-medium px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
                   (Dilipat • ${totalWeekKm} km)
@@ -2605,7 +2604,7 @@ create policy "Public Access" on vhm_data
       id: `week-${nextWeekNum}-${Date.now()}`,
       weekNumber: nextWeekNum,
       title: weekTitle.toUpperCase(),
-      notes: "Rencana program latihan baru",
+      notes: "",
       sessions: []
     };
 
